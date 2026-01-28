@@ -70,9 +70,7 @@ namespace HowsYourDayApi
 
             // Set up database context
             builder.Services.AddDbContext<HowsYourDayAppDbContext>(options =>
-                options.UseInMemoryDatabase("HowsYourDayApiTestDb"));
-            //builder.Services.AddDbContext<HowsYourDayAppDbContext>(options =>
-            //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
             {
