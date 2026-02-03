@@ -1,4 +1,4 @@
-using HowsYourDayApi.Domain.Entities;
+using HowsYourDayApi.Models;
 
 namespace HowsYourDayApi.Tests
 {
@@ -17,7 +17,7 @@ namespace HowsYourDayApi.Tests
             Assert.Equal(validRating, dayEntry.Rating);
         }
 
-        [Theory(DisplayName = "When rating is outside 1–10, it should throw an exception")]
+        [Theory(DisplayName = "When rating is outside 1ï¿½10, it should throw an exception")]
         [InlineData(0)]
         [InlineData(-1)]
         [InlineData(11)]

@@ -1,15 +1,14 @@
 using DotNetEnv;
-using HowsYourDayApi.Application.Services;
-using HowsYourDayApi.Domain.Entities;
-using HowsYourDayApi.Domain.Interfaces;
-using HowsYourDayApi.Infrastructure.Persistence;
-using HowsYourDayApi.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using HowsYourDayApi.Data;
+using HowsYourDayApi.Models;
+using HowsYourDayApi.Repositories;
+using HowsYourDayApi.Services;
 
 namespace HowsYourDayApi
 {

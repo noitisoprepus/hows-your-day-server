@@ -23,8 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Application\Mapping\" />
-    <Folder Include="Domain\Events\" />
+    <Folder Include="DTOs\" />
   </ItemGroup>
 
 </Project>
