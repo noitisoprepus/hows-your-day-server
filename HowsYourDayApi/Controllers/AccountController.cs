@@ -17,11 +17,11 @@ namespace HowsYourDayApi.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO registerDTO)
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             
-            var result = await _accountService.RegisterAsync(registerDTO, HttpContext);
+            var result = await _accountService.RegisterAsync(registerDto.UserName, registerDto.Password);
 
             if (result.Succeeded)
                 return Ok();
@@ -30,16 +30,16 @@ namespace HowsYourDayApi.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDTO login)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             
-            var result = await _accountService.LoginAsync(login, HttpContext);
+            var result = await _accountService.LoginAsync(loginDto.UserName, loginDto.Password, HttpContext);
 
             if (result.Succeeded)
                 return Ok();
             else
-                return Unauthorized("Email or password not found");
+                return Unauthorized("Username or password not found");
         }
 
         [HttpPost("logout")]
