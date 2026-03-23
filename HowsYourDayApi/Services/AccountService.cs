@@ -17,35 +17,33 @@ namespace HowsYourDayApi.Services
             _tokenService = tokenService;
         }
 
-        public async Task<IdentityResult> RegisterAsync(RegisterDTO registerDTO, HttpContext httpContext)
+        public async Task<IdentityResult> RegisterAsync(string username, string password)
         {
             var user = new AppUser
             {
-                UserName = registerDTO.EmailAddress,
-                Email = registerDTO.EmailAddress
+                // Only store username and no email for user anonymity
+                UserName = username
             };
 
-            var result = await _userManager.CreateAsync(user, registerDTO.Password);
+            var result = await _userManager.CreateAsync(user, password);
 
-            // TODO: Have the user confirm their email address.
             if (result.Succeeded)
                 await _userManager.AddToRoleAsync(user, "User");
 
             return result;
         }
 
-        // TODO: Require email confirmation to sign-in
-        public async Task<SignInResult> LoginAsync(LoginDTO login, HttpContext httpContext)
+        public async Task<SignInResult> LoginAsync(string username, string password, HttpContext httpContext)
         {
-            var user = await _userManager.FindByEmailAsync(login.EmailAddress);
+            var user = await _userManager.FindByNameAsync(username);
             if (user == null)
                 return SignInResult.Failed;
 
-            var result = await _signInManager.PasswordSignInAsync(user, login.Password, false, false);
+            var result = await _signInManager.PasswordSignInAsync(user, password, true, false);
             if (result.Succeeded)
             {
-                var tokenDTO = await _tokenService.CreateToken(user, true);
-                _tokenService.StoreTokensToCookie(tokenDTO, httpContext);
+                var tokenDto = await _tokenService.CreateToken(user, true);
+                _tokenService.StoreTokensToCookie(tokenDto, httpContext);
             }
 
             return result;
@@ -55,6 +53,11 @@ namespace HowsYourDayApi.Services
         {
             await _signInManager.SignOutAsync();
             _tokenService.ClearTokenCookie(httpContext);
+        }
+
+        public async Task DeleteUserAsync(AppUser user)
+        {
+            await _userManager.DeleteAsync(user);
         }
     }
 }
