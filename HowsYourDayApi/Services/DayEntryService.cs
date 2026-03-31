@@ -1,4 +1,3 @@
-using HowsYourDayApi.DTOs.Day;
 using HowsYourDayApi.Models;
 using HowsYourDayApi.Repositories;
 
@@ -13,37 +12,19 @@ namespace HowsYourDayApi.Services
             _dayRepository = dayRepository;
         }
 
-        public async Task<IEnumerable<DayEntryDto>> GetDayEntriesAsync()
+        public async Task<IEnumerable<DayEntry>> GetDayEntriesAsync(DateTime? fromUtc = null, DateTime? toUtc = null)
         {
-            // Retrieve all day entries
-            var dayEntries = await _dayRepository.GetAllAsync();
+            // Retrieve all days within the specified date range
+            var dayEntries = await _dayRepository.SearchAsync(null, fromUtc, toUtc);
 
-            // Map the day entries to DayEntryDto
-            var dayEntriesDto = dayEntries.Select(entry => new DayEntryDto
-            {
-                LogDate = entry.LogDateUtc.ToLocalTime(),
-                Rating = entry.Rating,
-                Note = entry.Note
-            });
-
-            return dayEntriesDto;
+            return dayEntries;
         }
 
-        public async Task<DayEntryDto?> GetDayEntryAsync(Guid dayEntryId)
+        public async Task<DayEntry?> GetDayEntryAsync(Guid dayEntryId)
         {
             var dayEntry = await _dayRepository.GetByIdAsync(dayEntryId);
 
-            var entryDto = new DayEntryDto();
-
-            if (dayEntry != null)
-            {
-                // Map the entry to DayEntryDto
-                entryDto.LogDate = dayEntry.LogDateUtc.ToLocalTime();
-                entryDto.Rating = dayEntry.Rating;
-                entryDto.Note = dayEntry.Note;
-            }
-
-            return entryDto;
+            return dayEntry;
         }
 
         public async Task<bool> HasUserPostedTodayAsync(Guid userId)
@@ -53,43 +34,25 @@ namespace HowsYourDayApi.Services
             return entryToday != null;
         }
 
-        public async Task<IEnumerable<DayEntryDto>> GetDayEntriesOfUserAsync(Guid userId, DateTime? fromUtc = null, DateTime? toUtc = null)
+        public async Task<IEnumerable<DayEntry>> GetDayEntriesOfUserAsync(Guid userId, DateTime? fromUtc = null, DateTime? toUtc = null)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("User ID cannot be empty.", nameof(userId));
 
             // Retrieve all days for a specific user within the specified date range
             var dayEntries = await _dayRepository.SearchAsync(userId, fromUtc, toUtc);
-            
-            // Map the day entries to DayEntryDto
-            var dayEntriesDto = dayEntries.Select(entry => new DayEntryDto
-            {
-                LogDate = entry.LogDateUtc.ToLocalTime(),
-                Rating = entry.Rating,
-                Note = entry.Note
-            });
 
-            return dayEntriesDto;
+            return dayEntries;
         }
 
-        public async Task<DayEntryDto> GetDayEntryOfUserTodayAsync(Guid userId)
+        public async Task<DayEntry?> GetDayEntryOfUserTodayAsync(Guid userId)
         {
             var entryToday = (await _dayRepository.SearchAsync(userId, DateTime.UtcNow)).SingleOrDefault();
 
-            var entryTodayDto = new DayEntryDto();
-
-            if (entryToday != null)
-            {
-                // Map the entry to DayEntryDto
-                entryTodayDto.LogDate = entryToday.LogDateUtc.ToLocalTime();
-                entryTodayDto.Rating = entryToday.Rating;
-                entryTodayDto.Note = entryToday.Note;
-            }
-
-            return entryTodayDto;
+            return entryToday;
         }
 
-        public async Task InsertDayEntryOfUserAsync(Guid userId, CreateDayEntryDto day)
+        public async Task InsertDayEntryOfUserAsync(Guid userId, DayEntry day)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("User ID cannot be empty.", nameof(userId));
@@ -101,34 +64,29 @@ namespace HowsYourDayApi.Services
             if (hasPostedToday)
                 throw new InvalidOperationException("User has already posted today.");
 
-            var newDayEntry = new DayEntry
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                LogDateUtc = DateTime.UtcNow,
-                Rating = day.Rating,
-                Note = day.Note
-            };
+            day.Id = Guid.NewGuid();
+            day.UserId = userId;
+            day.LoggedAtUtc = DateTime.UtcNow;
 
-            await _dayRepository.InsertAsync(newDayEntry);
+            await _dayRepository.InsertAsync(day);
         }
 
-        public async Task UpdateDayEntryOfUserTodayAsync(Guid userId, CreateDayEntryDto day)
+        public async Task UpdateDayEntryOfUserAsync(Guid userId, DayEntry entry)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-            if (day == null)
-                throw new ArgumentNullException(nameof(day), "Day cannot be null.");
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry), "Day cannot be null.");
 
-            var entryToday = (await _dayRepository.SearchAsync(userId, DateTime.UtcNow)).SingleOrDefault();
+            await _dayRepository.UpdateAsync(entry);
+        }
 
-            if (entryToday == null)
-                throw new InvalidOperationException("User has not posted today.");
+        public async Task DeleteDayEntriesOfUserAsync(Guid userId)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("User ID cannot be empty.", nameof(userId));
 
-            entryToday.Rating = day.Rating;
-            entryToday.Note = day.Note;
-
-            await _dayRepository.UpdateAsync(entryToday);
+            await _dayRepository.DeleteAllUserEntriesAsync(userId);
         }
     }
 }
