@@ -1,5 +1,6 @@
 using HowsYourDayApi.DTOs.Day;
 using HowsYourDayApi.Extensions;
+using HowsYourDayApi.Models;
 using HowsYourDayApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,7 @@ namespace HowsYourDayApi.Controllers
         [HttpGet("me/entry/today")]
         public async Task<ActionResult<DayEntryDto>> GetEntryOfUserToday()
         {
-            var userId = ClaimsPrincipalExtensions.GetUserId(User);
+            var userId = User.GetUserId();
 
             var result = await _dayService.GetDayEntryOfUserTodayAsync(userId);
 
@@ -41,7 +42,7 @@ namespace HowsYourDayApi.Controllers
             from = from.ToUniversalTime();
             to = to.ToUniversalTime();
 
-            var userId = ClaimsPrincipalExtensions.GetUserId(User);
+            var userId = User.GetUserId();
 
             var result = await _dayService.GetDayEntriesOfUserAsync(userId, from, to);
             
@@ -51,11 +52,18 @@ namespace HowsYourDayApi.Controllers
         [HttpPost("me/entry/today")]
         public async Task<ActionResult<DayEntryDto>> CreateEntryOfUserToday([FromBody] CreateDayEntryDto day)
         {
-            var userId = ClaimsPrincipalExtensions.GetUserId(User);
+            var userId = User.GetUserId();
 
             try
             {
-                await _dayService.InsertDayEntryOfUserAsync(userId, day);
+                // Map DTO to the DayEntry entity
+                var dayEntry = new DayEntry
+                {
+                    Rating = day.Rating,
+                    Note = day.Note,
+                };
+                
+                await _dayService.InsertDayEntryOfUserAsync(userId, dayEntry);
             }
             catch(Exception ex)
             {
@@ -68,11 +76,21 @@ namespace HowsYourDayApi.Controllers
         [HttpPut("me/entry/today")]
         public async Task<ActionResult<DayEntryDto>> EditEntryOfUserToday([FromBody] CreateDayEntryDto day)
         {
-            var userId = ClaimsPrincipalExtensions.GetUserId(User);
+            var userId = User.GetUserId();
 
             try
             {
-                await _dayService.UpdateDayEntryOfUserTodayAsync(userId, day);
+                // Get entry of user today
+                var dayEntryToday = await _dayService.GetDayEntryOfUserTodayAsync(userId);
+                
+                if (dayEntryToday == null)
+                    return NotFound();
+                
+                // Map DTO to the DayEntry entity
+                dayEntryToday.Rating = day.Rating;
+                dayEntryToday.Note = day.Note;
+                
+                await _dayService.UpdateDayEntryOfUserAsync(userId, dayEntryToday);
             }
             catch (Exception ex)
             {
