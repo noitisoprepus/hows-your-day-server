@@ -46,8 +46,8 @@ namespace HowsYourDayApi.Services
             var result = await _signInManager.PasswordSignInAsync(user, password, true, false);
             if (result.Succeeded)
             {
-                var tokenDto = await _tokenService.CreateToken(user, true);
-                _tokenService.StoreTokensToCookie(tokenDto, httpContext);
+                var tokenResult = await _tokenService.CreateToken(user, true);
+                _tokenService.StoreTokensToCookie(tokenResult.AccessToken, tokenResult.RefreshToken, httpContext);
             }
 
             return result;
