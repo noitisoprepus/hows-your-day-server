@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using HowsYourDayApi.DTOs.Authentication;
 using HowsYourDayApi.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +21,7 @@ namespace HowsYourDayApi.Services
         }
 
         // Access Token
-        public async Task<TokenDTO> CreateToken(AppUser user, bool populateExpiry)
+        public async Task<TokenResult> CreateToken(AppUser user, bool populateExpiry)
         {
             var claims = new List<Claim>
             {
@@ -52,12 +51,12 @@ namespace HowsYourDayApi.Services
 
             var accessToken = tokenHandler.WriteToken(token);
             
-            return new TokenDTO(accessToken, refreshToken);
+            return new TokenResult(accessToken, refreshToken);
         }
 
-        public async Task<TokenDTO> RefreshToken(TokenDTO tokenDTO)
+        public async Task<TokenResult> RefreshToken(string refreshToken)
         {
-            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == tokenDTO.RefreshToken);
+            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
             if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
                 throw new Exception("Refresh token invalid. Please login again.");
 
@@ -74,9 +73,9 @@ namespace HowsYourDayApi.Services
             }
         }
 
-        public void StoreTokensToCookie(TokenDTO tokenDTO, HttpContext context)
+        public void StoreTokensToCookie(string accessToken, string refreshToken, HttpContext context)
         {
-            context.Response.Cookies.Append("accessToken", tokenDTO.AccessToken,
+            context.Response.Cookies.Append("accessToken", accessToken,
                 new CookieOptions
             {
                 Path = "/",
@@ -88,7 +87,7 @@ namespace HowsYourDayApi.Services
                 SameSite = SameSiteMode.None
             });
             
-            context.Response.Cookies.Append("refreshToken", tokenDTO.RefreshToken,
+            context.Response.Cookies.Append("refreshToken", refreshToken,
                 new CookieOptions
             {
                 Expires = DateTime.UtcNow.AddDays(7),
