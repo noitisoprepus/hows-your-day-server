@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace HowsYourDayApi.Extensions
 {
@@ -6,7 +7,7 @@ namespace HowsYourDayApi.Extensions
     {
         public static Guid GetUserId(this ClaimsPrincipal user)
         {
-            var idString = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            var idString = user.FindFirstValue(JwtRegisteredClaimNames.Sub);
             return Guid.TryParse(idString, out var id)
                 ? id
                 : throw new InvalidOperationException("Invalid user ID format.");
