@@ -1,4 +1,3 @@
-using HowsYourDayApi.DTOs.Authentication;
 using HowsYourDayApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,9 +23,9 @@ namespace HowsYourDayApi.Controllers
             if (!HttpContext.Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
                 return Unauthorized("No user logged in. Refresh token unavailable.");
 
-            var refreshTokenDTO = new TokenDTO(string.Empty, refreshToken);
-            var newTokenDTO = await _tokenService.RefreshToken(refreshTokenDTO);
-            _tokenService.StoreTokensToCookie(newTokenDTO, HttpContext);
+            var tokenResult = await _tokenService.RefreshToken(refreshToken);
+            
+            _tokenService.StoreTokensToCookie(tokenResult.AccessToken, tokenResult.RefreshToken, HttpContext);
             
             return Ok();
         }
