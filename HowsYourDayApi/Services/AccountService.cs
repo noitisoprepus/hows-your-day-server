@@ -1,4 +1,3 @@
-using HowsYourDayApi.DTOs.Authentication;
 using HowsYourDayApi.Models;
 using Microsoft.AspNetCore.Identity;
 
@@ -17,6 +16,11 @@ namespace HowsYourDayApi.Services
             _tokenService = tokenService;
         }
 
+        public async Task<AppUser?> GetUserAsync(Guid userId)
+        {
+            return await _userManager.FindByIdAsync(userId.ToString());
+        }
+        
         public async Task<IdentityResult> RegisterAsync(string username, string password)
         {
             var user = new AppUser

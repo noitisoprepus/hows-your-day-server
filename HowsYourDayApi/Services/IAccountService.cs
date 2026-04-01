@@ -6,6 +6,7 @@ namespace HowsYourDayApi.Services
 {
     public interface IAccountService
     {
+        Task<AppUser?> GetUserAsync(Guid userId);
         Task<IdentityResult> RegisterAsync(string username, string password);
         Task<SignInResult> LoginAsync(string username, string password, HttpContext httpContext);
         Task LogoutAsync(HttpContext httpContext);
