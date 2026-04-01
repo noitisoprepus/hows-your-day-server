@@ -125,12 +125,10 @@ namespace HowsYourDayApi
             builder.Services.AddAutoMapper(typeof(Program));
 
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
-            builder.Services.AddScoped<IDaySummaryService, DaySummaryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAccountService, AccountService>();
 
             builder.Services.AddScoped<IDayEntryRepository, DayEntryRepository>();
-            builder.Services.AddScoped<IDaySummaryRepository, DaySummaryRepository>();
 
             var app = builder.Build();
 
