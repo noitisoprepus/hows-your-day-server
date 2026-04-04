@@ -4,6 +4,6 @@ namespace HowsYourDayApi.DTOs.Day
     {
         public DateTime LogDate { get; set; }
         public int Rating { get; set; }
-        public string? Note { get; set; } = null;
+        public string Note { get; set; }
     }   
 }
