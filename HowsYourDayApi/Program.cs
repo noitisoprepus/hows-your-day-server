@@ -127,6 +127,7 @@ namespace HowsYourDayApi
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAccountService, AccountService>();
+            builder.Services.AddSingleton<INlpService, NlpService>();
 
             builder.Services.AddScoped<IDayEntryRepository, DayEntryRepository>();
 
