@@ -4,5 +4,5 @@ namespace HowsYourDayApi.Services;
 
 public interface INlpService
 {
-    Task<DayEntryAnalysis> AnalyzeAsync(DayEntry entry);
+    DayEntryAnalysis Analyze(DayEntry entry);
 }
