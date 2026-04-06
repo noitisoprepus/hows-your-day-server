@@ -51,7 +51,8 @@ namespace HowsYourDayApi.Repositories
 
         public async Task DeleteAllUserEntriesAsync(Guid userId)
         {
-            _context.DayEntries.RemoveRange(await _context.DayEntries.Where(day => day.UserId == userId).ToListAsync());
+            var userEntries = await SearchAsync(userId);
+            _context.DayEntries.RemoveRange(userEntries);
 
             await _context.SaveChangesAsync();
         }
