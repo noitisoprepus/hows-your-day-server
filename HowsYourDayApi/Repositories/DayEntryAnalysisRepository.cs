@@ -1,5 +1,6 @@
 using HowsYourDayApi.Data;
 using HowsYourDayApi.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace HowsYourDayApi.Repositories;
 
@@ -12,33 +13,47 @@ public class DayEntryAnalysisRepository : IDayEntryAnalysisRepository
         _context = context;
     }
 
-    public async Task<DayEntryAnalysis> GetByIdAsync(Guid id)
+    public async Task<DayEntryAnalysis?> GetByIdAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await _context.DayEntryAnalyses
+            .FirstOrDefaultAsync(analysis => analysis.Id == id);
     }
 
     public async Task<IEnumerable<DayEntryAnalysis>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null)
     {
-        throw new NotImplementedException();
+        return await _context.DayEntryAnalyses
+            .Where(analysis => (!userId.HasValue || analysis.UserId == userId) &&
+                               (!fromUtc.HasValue || analysis.AnalyzedAtUtc >= fromUtc) &&
+                               (!toUtc.HasValue || analysis.AnalyzedAtUtc <= toUtc))
+            .ToListAsync();
     }
 
     public async Task InsertAsync(DayEntryAnalysis analysis)
     {
-        throw new NotImplementedException();
+        _context.DayEntryAnalyses.Add(analysis);
+        
+        await _context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(DayEntryAnalysis analysis)
     {
-        throw new NotImplementedException();
+        _context.DayEntryAnalyses.Update(analysis);
+        
+        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(DayEntryAnalysis analysis)
     {
-        throw new NotImplementedException();
+        _context.DayEntryAnalyses.Remove(analysis);
+        
+        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAllUserEntriesAsync(Guid userId)
     {
-        throw new NotImplementedException();
+        var userEntries = await SearchAsync(userId);
+        _context.DayEntryAnalyses.RemoveRange(userEntries);
+        
+        await _context.SaveChangesAsync();
     }
 }
