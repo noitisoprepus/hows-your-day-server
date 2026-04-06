@@ -12,6 +12,7 @@ namespace HowsYourDayApi.Data
         }
 
         public DbSet<DayEntry> DayEntries { get; set; }
+        public DbSet<DayEntryAnalysis> DayEntryAnalyses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
