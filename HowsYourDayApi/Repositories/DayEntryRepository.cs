@@ -13,11 +13,10 @@ namespace HowsYourDayApi.Repositories
             _context = context;
         }
 
-        public async Task<DayEntry> GetByIdAsync(Guid id)
+        public async Task<DayEntry?> GetByIdAsync(Guid id)
         {
             return await _context.DayEntries
-                .FirstOrDefaultAsync(day => day.Id == id)
-                ?? throw new KeyNotFoundException($"Day entry with ID {id} not found.");
+                .FirstOrDefaultAsync(day => day.Id == id);
         }
 
         public async Task<IEnumerable<DayEntry>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null)
