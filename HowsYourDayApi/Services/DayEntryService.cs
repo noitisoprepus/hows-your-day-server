@@ -6,10 +6,14 @@ namespace HowsYourDayApi.Services
     public class DayEntryService: IDayEntryService
     {
         private readonly IDayEntryRepository _dayRepository;
+        private readonly IDayEntryAnalysisRepository _dayEntryAnalysisRepository;
+        private readonly INlpService _nlpService;
 
-        public DayEntryService(IDayEntryRepository dayRepository)
+        public DayEntryService(IDayEntryRepository dayRepository,  IDayEntryAnalysisRepository dayEntryAnalysisRepository, INlpService nlpService)
         {
             _dayRepository = dayRepository;
+            _dayEntryAnalysisRepository = dayEntryAnalysisRepository;
+            _nlpService = nlpService;
         }
 
         public async Task<IEnumerable<DayEntry>> GetDayEntriesAsync(DateTime? fromUtc = null, DateTime? toUtc = null)
@@ -69,6 +73,9 @@ namespace HowsYourDayApi.Services
             day.LoggedAtUtc = DateTime.UtcNow;
 
             await _dayRepository.InsertAsync(day);
+
+            var analysis = _nlpService.Analyze(day);
+            await _dayEntryAnalysisRepository.InsertAsync(analysis);
         }
 
         public async Task UpdateDayEntryOfUserAsync(Guid userId, DayEntry entry)
@@ -79,6 +86,9 @@ namespace HowsYourDayApi.Services
                 throw new ArgumentNullException(nameof(entry), "Day cannot be null.");
 
             await _dayRepository.UpdateAsync(entry);
+            
+            // var analysis = _nlpService.Analyze(entry);
+            // await _dayEntryAnalysisRepository.UpdateAsync(analysis);
         }
 
         public async Task DeleteDayEntriesOfUserAsync(Guid userId)
@@ -87,6 +97,7 @@ namespace HowsYourDayApi.Services
                 throw new ArgumentException("User ID cannot be empty.", nameof(userId));
 
             await _dayRepository.DeleteAllUserEntriesAsync(userId);
+            await _dayEntryAnalysisRepository.DeleteAllUserEntriesAsync(userId);
         }
     }
 }
