@@ -100,6 +100,11 @@ namespace HowsYourDayApi.Services
                 existingAnalysis.AnalyzedAtUtc = DateTime.UtcNow;
                 await _dayEntryAnalysisRepository.UpdateAsync(existingAnalysis);
             }
+            else
+            {
+                var newAnalysis = _nlpService.Analyze(entry);
+                await _dayEntryAnalysisRepository.InsertAsync(newAnalysis);
+            }
         }
 
         public async Task DeleteDayEntriesOfUserAsync(Guid userId)
