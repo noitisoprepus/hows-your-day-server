@@ -85,10 +85,21 @@ namespace HowsYourDayApi.Services
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry), "Day cannot be null.");
 
+            var existingEntry = await _dayRepository.GetByIdAsync(entry.Id);
+            if (existingEntry == null || existingEntry.UserId != userId)
+                throw new InvalidOperationException("Day entry not found or does not belong to user.");
+
             await _dayRepository.UpdateAsync(entry);
-            
-            // var analysis = _nlpService.Analyze(entry);
-            // await _dayEntryAnalysisRepository.UpdateAsync(analysis);
+
+            var existingAnalysis = await _dayEntryAnalysisRepository.GetByDayEntryIdAsync(entry.Id);
+            if (existingAnalysis != null)
+            {
+                var newAnalysis = _nlpService.Analyze(entry);
+                existingAnalysis.KeyPhrases = newAnalysis.KeyPhrases;
+                existingAnalysis.Entities = newAnalysis.Entities;
+                existingAnalysis.AnalyzedAtUtc = DateTime.UtcNow;
+                await _dayEntryAnalysisRepository.UpdateAsync(existingAnalysis);
+            }
         }
 
         public async Task DeleteDayEntriesOfUserAsync(Guid userId)
