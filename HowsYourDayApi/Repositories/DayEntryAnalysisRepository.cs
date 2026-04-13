@@ -18,6 +18,12 @@ public class DayEntryAnalysisRepository : IDayEntryAnalysisRepository
         return await _context.DayEntryAnalyses
             .FirstOrDefaultAsync(analysis => analysis.Id == id);
     }
+    
+    public async Task<DayEntryAnalysis?> GetByDayEntryIdAsync(Guid dayEntryId)
+    {
+        return await _context.DayEntryAnalyses
+            .FirstOrDefaultAsync(a => a.DayEntryId == dayEntryId);
+    }
 
     public async Task<IEnumerable<DayEntryAnalysis>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null)
     {
@@ -48,7 +54,7 @@ public class DayEntryAnalysisRepository : IDayEntryAnalysisRepository
         
         await _context.SaveChangesAsync();
     }
-
+    
     public async Task DeleteAllUserEntriesAsync(Guid userId)
     {
         var userEntries = await SearchAsync(userId);
