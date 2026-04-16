@@ -1,0 +1,67 @@
+using HowsYourDay.Server.Models;
+using Microsoft.AspNetCore.Identity;
+
+namespace HowsYourDay.Server.Services
+{
+    public class AccountService : IAccountService
+    {
+        private readonly UserManager<AppUser> _userManager;
+        private readonly SignInManager<AppUser> _signInManager;
+        private readonly ITokenService _tokenService;
+
+        public AccountService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, ITokenService tokenService)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _tokenService = tokenService;
+        }
+
+        public async Task<AppUser?> GetUserAsync(Guid userId)
+        {
+            return await _userManager.FindByIdAsync(userId.ToString());
+        }
+        
+        public async Task<IdentityResult> RegisterAsync(string username, string password)
+        {
+            var user = new AppUser
+            {
+                // Only store username and no email for user anonymity
+                UserName = username
+            };
+
+            var result = await _userManager.CreateAsync(user, password);
+
+            if (result.Succeeded)
+                await _userManager.AddToRoleAsync(user, "User");
+
+            return result;
+        }
+
+        public async Task<SignInResult> LoginAsync(string username, string password, HttpContext httpContext)
+        {
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+                return SignInResult.Failed;
+
+            var result = await _signInManager.PasswordSignInAsync(user, password, true, false);
+            if (result.Succeeded)
+            {
+                var tokenResult = await _tokenService.CreateToken(user, true);
+                _tokenService.StoreTokensToCookie(tokenResult.AccessToken, tokenResult.RefreshToken, httpContext);
+            }
+
+            return result;
+        }
+
+        public async Task LogoutAsync(HttpContext httpContext)
+        {
+            await _signInManager.SignOutAsync();
+            _tokenService.ClearTokenCookie(httpContext);
+        }
+
+        public async Task DeleteUserAsync(AppUser user)
+        {
+            await _userManager.DeleteAsync(user);
+        }
+    }
+}
