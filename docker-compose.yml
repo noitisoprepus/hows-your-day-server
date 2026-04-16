@@ -1,6 +1,28 @@
 services:
-  howsyourdayserver:
+  server:
     image: ${DOCKER_REGISTRY-}howsyourdayserver
     build:
       context: .
       dockerfile: HowsYourDay.Server/Dockerfile
+    ports:
+      - "8080:8080"
+
+  web:
+    image: ${DOCKER_REGISTRY-}howsyourdayserverweb
+    build:
+      context: .
+      dockerfile: HowsYourDay.Web/Dockerfile
+    ports:
+      - "5000:8080"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: howsyourdayserver
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
