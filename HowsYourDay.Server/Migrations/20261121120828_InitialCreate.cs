@@ -212,8 +212,8 @@ namespace HowsYourDay.Server.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { new Guid("4e2a7c9d-1b3f-4a6e-8c5d-0f9e2b7a1c34"), null, "User", "USER" },
-                    { new Guid("9c1b1a2d-6f3e-4b8a-9f0e-2d7c5a4b3e21"), null, "Admin", "ADMIN" }
+                    { new Guid("4e2a7c9d-1b3f-4a6e-8c5d-0f9e2b7a1c34"), "a1b2c3d4-0000-4000-8000-000000000002", "User", "USER" },
+                    { new Guid("9c1b1a2d-6f3e-4b8a-9f0e-2d7c5a4b3e21"), "a1b2c3d4-0000-4000-8000-000000000001", "Admin", "ADMIN" }
                 });
 
             migrationBuilder.CreateIndex(

@@ -18,7 +18,7 @@ namespace HowsYourDay.Server.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.25")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -139,11 +139,11 @@ namespace HowsYourDay.Server.Migrations
                     b.Property<Guid>("DayEntryId")
                         .HasColumnType("uuid");
 
-                    b.Property<List<string>>("Entities")
+                    b.PrimitiveCollection<List<string>>("Entities")
                         .IsRequired()
                         .HasColumnType("text[]");
 
-                    b.Property<List<string>>("KeyPhrases")
+                    b.PrimitiveCollection<List<string>>("KeyPhrases")
                         .IsRequired()
                         .HasColumnType("text[]");
 
@@ -190,12 +190,14 @@ namespace HowsYourDay.Server.Migrations
                         new
                         {
                             Id = new Guid("9c1b1a2d-6f3e-4b8a-9f0e-2d7c5a4b3e21"),
+                            ConcurrencyStamp = "a1b2c3d4-0000-4000-8000-000000000001",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
                             Id = new Guid("4e2a7c9d-1b3f-4a6e-8c5d-0f9e2b7a1c34"),
+                            ConcurrencyStamp = "a1b2c3d4-0000-4000-8000-000000000002",
                             Name = "User",
                             NormalizedName = "USER"
                         });
