@@ -18,6 +18,8 @@ namespace HowsYourDay.Server.Data
         {
             base.OnModelCreating(builder);
 
+            builder.ApplyConfigurationsFromAssembly(typeof(HowsYourDayAppDbContext).Assembly);
+
             // Seed IDs are fixed so migrations stay deterministic
             List<IdentityRole<Guid>> roles = new List<IdentityRole<Guid>>
             {
