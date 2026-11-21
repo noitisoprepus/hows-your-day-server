@@ -27,13 +27,15 @@ namespace HowsYourDay.Server.Data
                 {
                     Id = Guid.Parse("9c1b1a2d-6f3e-4b8a-9f0e-2d7c5a4b3e21"),
                     Name = "Admin",
-                    NormalizedName = "ADMIN"
+                    NormalizedName = "ADMIN",
+                    ConcurrencyStamp = "a1b2c3d4-0000-4000-8000-000000000001"
                 },
                 new IdentityRole<Guid>
                 {
                     Id = Guid.Parse("4e2a7c9d-1b3f-4a6e-8c5d-0f9e2b7a1c34"),
                     Name = "User",
-                    NormalizedName = "USER"
+                    NormalizedName = "USER",
+                    ConcurrencyStamp = "a1b2c3d4-0000-4000-8000-000000000002"
                 }
             };
             builder.Entity<IdentityRole<Guid>>().HasData(roles);

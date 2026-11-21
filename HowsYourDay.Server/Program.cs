@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using System.Text;
 using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Models;
@@ -58,19 +58,9 @@ namespace HowsYourDay.Server
                         BearerFormat = "JWT",
                         Scheme = "Bearer"
                     });
-                    option.AddSecurityRequirement(new OpenApiSecurityRequirement
+                    option.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                     {
-                        {
-                            new OpenApiSecurityScheme
-                            {
-                                Reference = new OpenApiReference
-                                {
-                                    Type=ReferenceType.SecurityScheme,
-                                    Id="Bearer"
-                                }
-                            },
-                            new string[]{}
-                        }
+                        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
                     });
                 });
             }
@@ -132,7 +122,7 @@ namespace HowsYourDay.Server
                 };
             });
 
-            builder.Services.AddAutoMapper(typeof(Program));
+            builder.Services.AddAutoMapper(_ => { }, typeof(Program));
 
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
