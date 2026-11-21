@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace HowsYourDay.Server.Models
 {
-    public class AppUser : IdentityUser
+    public class AppUser : IdentityUser<Guid>
     {
         public DateTime CreatedAtUtc { get; set; }
 

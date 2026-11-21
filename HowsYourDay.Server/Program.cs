@@ -87,7 +87,7 @@ namespace HowsYourDay.Server
             builder.Services.AddDbContext<HowsYourDayAppDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
+            builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>(options =>
             {
                 options.Password.RequiredLength = 8;
                 options.Password.RequireUppercase = true;

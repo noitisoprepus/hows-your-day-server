@@ -25,7 +25,7 @@ namespace HowsYourDay.Server.Services
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id)
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString())
             };
 
             var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512Signature);
