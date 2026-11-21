@@ -141,6 +141,7 @@ namespace HowsYourDay.Server
             builder.Services.AddSingleton<INlpService, NlpService>();
 
             builder.Services.AddScoped<IDayEntryRepository, DayEntryRepository>();
+            builder.Services.AddScoped<IDayEntryAnalysisRepository, DayEntryAnalysisRepository>();
 
             var app = builder.Build();
 
