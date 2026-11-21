@@ -3,8 +3,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using HowsYourDay.Server.Models;
+using HowsYourDay.Server.Options;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace HowsYourDay.Server.Services
@@ -12,11 +14,13 @@ namespace HowsYourDay.Server.Services
     public class TokenService : ITokenService
     {
         private readonly SymmetricSecurityKey _key;
+        private readonly JwtOptions _jwtOptions;
         private readonly UserManager<AppUser> _userManager;
 
-        public TokenService(UserManager<AppUser> userManager)
+        public TokenService(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions)
         {
-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")));
+            _jwtOptions = jwtOptions.Value;
+            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
             _userManager = userManager;
         }
 
@@ -34,8 +38,8 @@ namespace HowsYourDay.Server.Services
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddMinutes(5),
                 SigningCredentials = creds,
-                Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
-                Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                Issuer = _jwtOptions.Issuer,
+                Audience = _jwtOptions.Audience
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();

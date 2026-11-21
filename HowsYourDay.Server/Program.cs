@@ -1,4 +1,3 @@
-using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Models;
+using HowsYourDay.Server.Options;
 using HowsYourDay.Server.Repositories;
 using HowsYourDay.Server.Services;
 
@@ -18,19 +18,13 @@ namespace HowsYourDay.Server
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Default (Production)
-            var dbhost = "postgres";
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            if (builder.Environment.IsDevelopment())
-            {
-                Env.Load("../../.env");
-                dbhost = "localhost";
-            }
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
-            // Build the connection string from environment variables
-            var connectionString = $"Host={dbhost};Port=5432;Database={Environment.GetEnvironmentVariable("POSTGRES_DB")};Username={Environment.GetEnvironmentVariable("POSTGRES_USER")};Password={Environment.GetEnvironmentVariable("POSTGRES_PASSWORD")}";
-            
-            builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
+            var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+            var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
 
             //// Add services to the container.
 
@@ -83,9 +77,14 @@ namespace HowsYourDay.Server
 
             builder.Services.AddAuthorization();
 
+            builder.Services.AddOptions<JwtOptions>()
+                .Bind(jwtSection)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
             // Set up database context
             builder.Services.AddDbContext<HowsYourDayAppDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(connectionString));
 
             builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>(options =>
             {
@@ -112,11 +111,11 @@ namespace HowsYourDay.Server
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
+                    ValidIssuer = jwtOptions.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+                    ValidAudience = jwtOptions.Audience,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY"))),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
                     ValidateLifetime = true,
                 };
 
