@@ -17,7 +17,7 @@ namespace HowsYourDay.Server.Tests
             Assert.Equal(validRating, dayEntry.Rating);
         }
 
-        [Theory(DisplayName = "When rating is outside 1�10, it should throw an exception")]
+        [Theory(DisplayName = "When rating is outside 1-10, it should throw an exception")]
         [InlineData(0)]
         [InlineData(-1)]
         [InlineData(11)]
@@ -28,6 +28,35 @@ namespace HowsYourDay.Server.Tests
 
             Assert.Throws<ArgumentOutOfRangeException>(() => dayEntry.Rating = invalidRating);
         }
-    }
 
+        [Theory(DisplayName = "When note is blank, it should throw an exception")]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\n\t")]
+        public void When_NoteIsBlank_Should_ThrowException(string note)
+        {
+            var dayEntry = new DayEntry();
+
+            Assert.Throws<ArgumentException>(() => dayEntry.Note = note);
+        }
+
+        [Fact(DisplayName = "When note is too long, it should throw an exception")]
+        public void When_NoteIsTooLong_Should_ThrowException()
+        {
+            var dayEntry = new DayEntry();
+            var note = new string('a', DayEntry.MaxNoteLength + 1);
+
+            Assert.Throws<ArgumentException>(() => dayEntry.Note = note);
+        }
+
+        [Fact(DisplayName = "When note has surrounding whitespace, it should be trimmed")]
+        public void When_NoteHasSurroundingWhitespace_Should_Trim()
+        {
+            var dayEntry = new DayEntry();
+
+            dayEntry.Note = "  A good day  ";
+
+            Assert.Equal("A good day", dayEntry.Note);
+        }
+    }
 }
