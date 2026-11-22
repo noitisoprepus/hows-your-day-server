@@ -10,6 +10,7 @@ public static class DayEntryMappings
         return new DayEntryDto
         {
             Id = entry.Id,
+            EntryDate = entry.EntryDate,
             LoggedAtUtc = entry.LoggedAtUtc,
             Rating = entry.Rating,
             Note = entry.Note

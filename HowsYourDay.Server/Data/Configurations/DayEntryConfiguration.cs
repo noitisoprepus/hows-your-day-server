@@ -23,6 +23,9 @@ public class DayEntryConfiguration : IEntityTypeConfiguration<DayEntry>
             .IsRequired()
             .HasMaxLength(4000);
 
+        builder.Property(day => day.EntryDate)
+            .IsRequired();
+
         builder.Property(day => day.LoggedAtUtc)
             .IsRequired();
 
@@ -30,6 +33,9 @@ public class DayEntryConfiguration : IEntityTypeConfiguration<DayEntry>
             .WithMany()
             .HasForeignKey(day => day.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(day => new { day.UserId, day.EntryDate })
+            .IsUnique();
 
         builder.HasIndex(day => new { day.UserId, day.LoggedAtUtc });
     }

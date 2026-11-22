@@ -11,6 +11,7 @@ namespace HowsYourDay.Server.Models
 
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
+        public DateOnly EntryDate { get; set; }
         public DateTime LoggedAtUtc { get; set; }
 
         public int Rating

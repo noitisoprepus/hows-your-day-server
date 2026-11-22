@@ -78,6 +78,10 @@ namespace HowsYourDay.Server.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("TimeZoneId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -103,6 +107,9 @@ namespace HowsYourDay.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly>("EntryDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTime>("LoggedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -118,6 +125,9 @@ namespace HowsYourDay.Server.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId", "EntryDate")
+                        .IsUnique();
 
                     b.HasIndex("UserId", "LoggedAtUtc");
 
