@@ -122,6 +122,8 @@ namespace HowsYourDay.Server
                 };
             });
 
+            builder.Services.AddSingleton(TimeProvider.System);
+
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAccountService, AccountService>();

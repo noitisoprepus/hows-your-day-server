@@ -27,6 +27,9 @@ public class NlpService : INlpService
 
     public DayEntryAnalysis Analyze(DayEntry entry)
     {
+        if (_nlp is null)
+            throw new InvalidOperationException("The NLP pipeline has not been initialized.");
+
         var doc = new Document(entry.Note, Language.English);
         _nlp.ProcessSingle(doc);
 

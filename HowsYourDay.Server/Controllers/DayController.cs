@@ -1,4 +1,5 @@
 using HowsYourDay.Server.DTOs.Day;
+using HowsYourDay.Server.Exceptions;
 using HowsYourDay.Server.Extensions;
 using HowsYourDay.Server.Mappings;
 using HowsYourDay.Server.Services;
@@ -36,7 +37,14 @@ namespace HowsYourDay.Server.Controllers
         public async Task<ActionResult<IEnumerable<DayEntryDto>>> GetEntries([FromQuery] DateTime from, [FromQuery] DateTime to)
         {
             if (from > to)
-                return BadRequest("The 'from' date must be earlier than the 'to' date.");
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid date range.",
+                    Detail = "The 'from' date must be earlier than the 'to' date.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
 
             // Convert to UTC if not already
             from = from.ToUniversalTime();
@@ -62,9 +70,23 @@ namespace HowsYourDay.Server.Controllers
 
                 return CreatedAtAction(nameof(GetEntryOfUserToday), new { }, dayEntry.ToDto());
             }
-            catch (Exception ex)
+            catch (DayEntryAlreadyExistsException)
             {
-                return BadRequest($"An error occurred while posting your day: {ex.Message}");
+                return Conflict(new ProblemDetails
+                {
+                    Title = "An entry already exists for today.",
+                    Detail = "You can edit today's entry instead of creating another one.",
+                    Status = StatusCodes.Status409Conflict
+                });
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid entry.",
+                    Detail = "The entry could not be saved because one or more values are invalid.",
+                    Status = StatusCodes.Status400BadRequest
+                });
             }
         }
 
@@ -73,23 +95,42 @@ namespace HowsYourDay.Server.Controllers
         {
             var userId = User.GetUserId();
 
+            // Get entry of user today
+            var dayEntryToday = await _dayService.GetDayEntryOfUserTodayAsync(userId);
+
+            if (dayEntryToday == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "No entry found for today.",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
             try
             {
-                // Get entry of user today
-                var dayEntryToday = await _dayService.GetDayEntryOfUserTodayAsync(userId);
-                
-                if (dayEntryToday == null)
-                    return NotFound();
-
                 day.ApplyTo(dayEntryToday);
 
                 await _dayService.UpdateDayEntryOfUserAsync(userId, dayEntryToday);
 
                 return Ok(dayEntryToday.ToDto());
             }
-            catch (Exception ex)
+            catch (DayEntryNotFoundException)
             {
-                return BadRequest($"An error occurred while updating your day: {ex.Message}");
+                return NotFound(new ProblemDetails
+                {
+                    Title = "No entry found for today.",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid entry.",
+                    Detail = "The entry could not be updated because one or more values are invalid.",
+                    Status = StatusCodes.Status400BadRequest
+                });
             }
         }
     }
