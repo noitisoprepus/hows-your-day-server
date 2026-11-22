@@ -7,8 +7,8 @@ public class DayEntryAnalysis
     public Guid UserId { get; set; }
     
     // NLP results
-    public List<string> KeyPhrases { get; set; }
-    public List<string> Entities { get; set; } // Named entities
+    public List<string> KeyPhrases { get; set; } = [];
+    public List<string> Entities { get; set; } = []; // Named entities
     
     public DateTime AnalyzedAtUtc { get; set; }
 }

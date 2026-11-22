@@ -5,6 +5,6 @@ namespace HowsYourDay.Server.DTOs.Day
         public Guid Id { get; set; }
         public DateTime LoggedAtUtc { get; set; }
         public int Rating { get; set; }
-        public string Note { get; set; }
+        public string Note { get; set; } = string.Empty;
     }   
 }
