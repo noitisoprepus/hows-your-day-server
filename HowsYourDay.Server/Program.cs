@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
@@ -9,6 +10,7 @@ using HowsYourDay.Server.Models;
 using HowsYourDay.Server.Options;
 using HowsYourDay.Server.Repositories;
 using HowsYourDay.Server.Services;
+using HowsYourDay.Server.Utilities;
 
 namespace HowsYourDay.Server
 {
@@ -25,6 +27,7 @@ namespace HowsYourDay.Server
 
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
+            var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
 
             //// Add services to the container.
 
@@ -70,6 +73,14 @@ namespace HowsYourDay.Server
             builder.Services.AddOptions<JwtOptions>()
                 .Bind(jwtSection)
                 .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            builder.Services.AddOptions<AppOptions>()
+                .Bind(appSection)
+                .ValidateDataAnnotations()
+                .Validate(
+                    options => TimeZoneHelper.IsValid(options.DefaultTimeZone),
+                    "App:DefaultTimeZone must be a valid time zone.")
                 .ValidateOnStart();
 
             // Set up database context
@@ -127,6 +138,7 @@ namespace HowsYourDay.Server
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAccountService, AccountService>();
+            builder.Services.AddScoped<IUserTimeZoneService, UserTimeZoneService>();
             builder.Services.AddSingleton<INlpService, NlpService>();
 
             builder.Services.AddScoped<IDayEntryRepository, DayEntryRepository>();

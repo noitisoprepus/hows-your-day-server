@@ -1,6 +1,7 @@
 using HowsYourDay.Server.Exceptions;
 using HowsYourDay.Server.Models;
 using HowsYourDay.Server.Repositories;
+using HowsYourDay.Server.Utilities;
 
 namespace HowsYourDay.Server.Services
 {
@@ -9,17 +10,20 @@ namespace HowsYourDay.Server.Services
         private readonly IDayEntryRepository _dayRepository;
         private readonly IDayEntryAnalysisRepository _dayEntryAnalysisRepository;
         private readonly INlpService _nlpService;
+        private readonly IUserTimeZoneService _userTimeZoneService;
         private readonly TimeProvider _timeProvider;
 
         public DayEntryService(
             IDayEntryRepository dayRepository,
             IDayEntryAnalysisRepository dayEntryAnalysisRepository,
             INlpService nlpService,
+            IUserTimeZoneService userTimeZoneService,
             TimeProvider timeProvider)
         {
             _dayRepository = dayRepository;
             _dayEntryAnalysisRepository = dayEntryAnalysisRepository;
             _nlpService = nlpService;
+            _userTimeZoneService = userTimeZoneService;
             _timeProvider = timeProvider;
         }
 
@@ -40,16 +44,14 @@ namespace HowsYourDay.Server.Services
 
         public async Task<bool> HasUserPostedTodayAsync(Guid userId)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
-            var entries = await GetEntriesOfUserForUtcDayAsync(userId, GetUtcNow());
-
-            return entries.Count > 0;
+            return await GetDayEntryOfUserTodayAsync(userId) is not null;
         }
 
         public async Task<IEnumerable<DayEntry>> GetDayEntriesOfUserAsync(Guid userId, DateTime? fromUtc = null, DateTime? toUtc = null)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
             // Retrieve all days for a specific user within the specified date range
             var dayEntries = await _dayRepository.SearchAsync(userId, fromUtc, toUtc);
@@ -59,32 +61,34 @@ namespace HowsYourDay.Server.Services
 
         public async Task<DayEntry?> GetDayEntryOfUserTodayAsync(Guid userId)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
-            var entries = await GetEntriesOfUserForUtcDayAsync(userId, GetUtcNow());
+            var timeZone = await _userTimeZoneService.GetTimeZoneAsync(userId);
+            var today = TimeZoneHelper.GetLocalDate(GetUtcNow(), timeZone);
 
-            return entries
-                .OrderByDescending(entry => entry.LoggedAtUtc)
-                .FirstOrDefault();
+            return await _dayRepository.GetByUserAndDateAsync(userId, today);
         }
 
         public async Task InsertDayEntryOfUserAsync(Guid userId, DayEntry day)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
             if (day == null)
                 throw new ArgumentNullException(nameof(day), "Day cannot be null.");
 
             ValidateEntry(day);
 
+            var timeZone = await _userTimeZoneService.GetTimeZoneAsync(userId);
             var now = GetUtcNow();
-            var entriesToday = await GetEntriesOfUserForUtcDayAsync(userId, now);
+            var today = TimeZoneHelper.GetLocalDate(now, timeZone);
 
-            if (entriesToday.Count > 0)
+            var existingEntry = await _dayRepository.GetByUserAndDateAsync(userId, today);
+            if (existingEntry != null)
                 throw new DayEntryAlreadyExistsException();
 
             day.Id = Guid.NewGuid();
             day.UserId = userId;
+            day.EntryDate = today;
             day.LoggedAtUtc = now;
 
             await _dayRepository.InsertAsync(day);
@@ -95,13 +99,18 @@ namespace HowsYourDay.Server.Services
 
         public async Task UpdateDayEntryOfUserAsync(Guid userId, DayEntry entry)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry), "Day cannot be null.");
 
             var existingEntry = await _dayRepository.GetByIdAsync(entry.Id);
             if (existingEntry == null || existingEntry.UserId != userId)
+                throw new DayEntryNotFoundException();
+
+            var timeZone = await _userTimeZoneService.GetTimeZoneAsync(userId);
+            var today = TimeZoneHelper.GetLocalDate(GetUtcNow(), timeZone);
+            if (entry.EntryDate != today)
                 throw new DayEntryNotFoundException();
 
             ValidateEntry(entry);
@@ -126,7 +135,7 @@ namespace HowsYourDay.Server.Services
 
         public async Task DeleteDayEntriesOfUserAsync(Guid userId)
         {
-            ValidateUserId(userId);
+            EnsureUserId(userId);
 
             await _dayRepository.DeleteAllUserEntriesAsync(userId);
             await _dayEntryAnalysisRepository.DeleteAllUserEntriesAsync(userId);
@@ -137,17 +146,7 @@ namespace HowsYourDay.Server.Services
             return _timeProvider.GetUtcNow().UtcDateTime;
         }
 
-        private async Task<IReadOnlyList<DayEntry>> GetEntriesOfUserForUtcDayAsync(Guid userId, DateTime utcNow)
-        {
-            var startUtc = utcNow.Date;
-            var endUtc = startUtc.AddDays(1).AddTicks(-1);
-
-            var entries = await _dayRepository.SearchAsync(userId, startUtc, endUtc);
-
-            return entries.ToList();
-        }
-
-        private static void ValidateUserId(Guid userId)
+        private static void EnsureUserId(Guid userId)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("User ID cannot be empty.", nameof(userId));

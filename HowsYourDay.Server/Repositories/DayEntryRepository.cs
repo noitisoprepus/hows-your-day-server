@@ -19,6 +19,12 @@ namespace HowsYourDay.Server.Repositories
                 .FirstOrDefaultAsync(day => day.Id == id);
         }
 
+        public async Task<DayEntry?> GetByUserAndDateAsync(Guid userId, DateOnly entryDate)
+        {
+            return await _context.DayEntries
+                .FirstOrDefaultAsync(day => day.UserId == userId && day.EntryDate == entryDate);
+        }
+
         public async Task<IEnumerable<DayEntry>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null)
         {
             return await _context.DayEntries
