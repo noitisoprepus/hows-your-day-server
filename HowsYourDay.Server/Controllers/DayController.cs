@@ -1,6 +1,6 @@
 using HowsYourDay.Server.DTOs.Day;
 using HowsYourDay.Server.Extensions;
-using HowsYourDay.Server.Models;
+using HowsYourDay.Server.Mappings;
 using HowsYourDay.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +26,10 @@ namespace HowsYourDay.Server.Controllers
 
             var result = await _dayService.GetDayEntryOfUserTodayAsync(userId);
 
-            return Ok(result);
+            if (result == null)
+                return NotFound();
+
+            return Ok(result.ToDto());
         }
 
         [HttpGet("me/entry")]
@@ -42,8 +45,8 @@ namespace HowsYourDay.Server.Controllers
             var userId = User.GetUserId();
 
             var result = await _dayService.GetDayEntriesOfUserAsync(userId, from, to);
-            
-            return Ok(result);
+
+            return Ok(result.Select(entry => entry.ToDto()));
         }
 
         [HttpPost("me/entry/today")]
@@ -53,21 +56,16 @@ namespace HowsYourDay.Server.Controllers
 
             try
             {
-                // Map DTO to the DayEntry entity
-                var dayEntry = new DayEntry
-                {
-                    Rating = day.Rating,
-                    Note = day.Note,
-                };
-                
+                var dayEntry = day.ToEntity();
+
                 await _dayService.InsertDayEntryOfUserAsync(userId, dayEntry);
+
+                return CreatedAtAction(nameof(GetEntryOfUserToday), new { }, dayEntry.ToDto());
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return BadRequest($"An error occurred while posting your day: {ex.Message}");
             }
-
-            return CreatedAtAction(nameof(GetEntryOfUserToday), new {}, null);
         }
 
         [HttpPut("me/entry/today")]
@@ -82,19 +80,17 @@ namespace HowsYourDay.Server.Controllers
                 
                 if (dayEntryToday == null)
                     return NotFound();
-                
-                // Map DTO to the DayEntry entity
-                dayEntryToday.Rating = day.Rating;
-                dayEntryToday.Note = day.Note;
-                
+
+                day.ApplyTo(dayEntryToday);
+
                 await _dayService.UpdateDayEntryOfUserAsync(userId, dayEntryToday);
+
+                return Ok(dayEntryToday.ToDto());
             }
             catch (Exception ex)
             {
                 return BadRequest($"An error occurred while updating your day: {ex.Message}");
             }
-
-            return CreatedAtAction(nameof(GetEntryOfUserToday), new {}, null);
         }
     }
 }

@@ -122,8 +122,6 @@ namespace HowsYourDay.Server
                 };
             });
 
-            builder.Services.AddAutoMapper(_ => { }, typeof(Program));
-
             builder.Services.AddScoped<IDayEntryService, DayEntryService>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAccountService, AccountService>();

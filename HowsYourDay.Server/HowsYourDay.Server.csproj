@@ -10,7 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="17.0.0" />
     <PackageReference Include="Catalyst" Version="26.10.6514" />
     <PackageReference Include="Catalyst.Models.English" Version="26.9.5316" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
