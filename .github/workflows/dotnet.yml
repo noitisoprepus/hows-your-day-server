@@ -9,20 +9,28 @@ on:
   pull_request:
     branches: [ "main" ]
 
-jobs:
-  build:
+permissions:
+  contents: read
 
+jobs:
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v7
+    - name: Checkout repository
+      uses: actions/checkout@v7
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+
     - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet restore HowsYourDay.sln
+
+    - name: Build solution
+      run: dotnet build HowsYourDay.sln --no-restore --configuration Release
+
+    - name: Run tests
+      run: dotnet test HowsYourDay.sln --no-build --configuration Release --verbosity normal
