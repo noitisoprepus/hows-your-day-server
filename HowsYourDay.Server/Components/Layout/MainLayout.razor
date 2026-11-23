@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+
+<header class="site-header">
+    <a class="wordmark" href="/">HowsYourDay</a>
+    <AuthorizeView Policy="Ui">
+        <Authorized>
+            <form method="post" action="/ui/account/logout" data-enhance-nav="false">
+                <AntiforgeryToken />
+                <button type="submit" class="text-button">Sign out</button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+</header>
+
+<main class="page">
+    @Body
+</main>

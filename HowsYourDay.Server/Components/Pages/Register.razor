@@ -1,0 +1,29 @@
+@page "/register"
+@layout AccountLayout
+
+<PageTitle>Create an account · HowsYourDay</PageTitle>
+<h1>Create an account</h1>
+@if (Error is "required" or "password" or "username")
+{
+    <p class="error" role="alert">@(Error switch
+    {
+        "required" => "Enter a username and password.",
+        "password" => "Choose a password that meets the requirements below.",
+        _ => "Choose a different username."
+    })</p>
+}
+<form class="account-form" method="post" action="/ui/account/register">
+    <AntiforgeryToken />
+    <label for="username">Username</label>
+    <input id="username" name="userName" autocomplete="username" maxlength="256" required />
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password"
+           minlength="8" aria-describedby="password-help" required />
+    <small id="password-help">Use at least eight characters with an uppercase letter, a lowercase letter, and a number.</small>
+    <button type="submit">Create account</button>
+</form>
+<p>Already have an account? <a href="/login">Sign in</a></p>
+
+@code {
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+}

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using HowsYourDay.Server.Components;
 using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Extensions;
 using HowsYourDay.Server.Models;
@@ -41,6 +42,8 @@ namespace HowsYourDay.Server
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
             var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
 
+            builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+            builder.Services.AddCascadingAuthenticationState();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
@@ -181,7 +184,11 @@ namespace HowsYourDay.Server
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseRateLimiter();
+            app.UseAntiforgery();
 
+            app.MapStaticAssets();
+            app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+            app.MapAccountFormEndpoints();
             app.MapControllers();
             app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false })
                 .AllowAnonymous();

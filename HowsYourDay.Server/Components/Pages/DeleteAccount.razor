@@ -1,0 +1,22 @@
+@page "/account/delete"
+@attribute [Authorize(Policy = "Ui")]
+
+<PageTitle>Delete account · HowsYourDay</PageTitle>
+<h1>Delete account</h1>
+<p>This permanently deletes your account, journal entries, and insights.</p>
+@if (Error is "confirmation" or "delete")
+{
+    <p class="error" role="alert">@(Error == "confirmation" ? "Confirm that you want to delete your account." : "Your account could not be deleted. Try again.")</p>
+}
+<form class="delete-form" method="post" action="/ui/account/delete">
+    <AntiforgeryToken />
+    <label><input type="checkbox" name="confirm" value="yes" required /> I want to permanently delete my account.</label>
+    <div class="form-actions">
+        <button class="danger" type="submit">Delete account</button>
+        <a href="/">Cancel</a>
+    </div>
+</form>
+
+@code {
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+}

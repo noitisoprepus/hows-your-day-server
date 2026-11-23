@@ -16,14 +16,6 @@ services:
       db:
         condition: service_healthy
 
-  web:
-    image: ${DOCKER_REGISTRY-}howsyourdayserverweb
-    build:
-      context: .
-      dockerfile: HowsYourDay.Web/Dockerfile
-    ports:
-      - "5000:8080"
-
   db:
     image: postgres:16-alpine
     environment:
