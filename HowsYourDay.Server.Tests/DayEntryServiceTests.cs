@@ -59,29 +59,39 @@ namespace HowsYourDay.Server.Tests
         }
 
         [Fact]
-        public async Task HasUserPostedTodayAsync_ReturnsTrue_WhenEntryExistsToday()
+        public async Task GetDayEntriesOfUserAsync_ReturnsNewestFirstAndPaginates()
         {
             var userId = Guid.NewGuid();
-            var repository = new FakeDayEntryRepository(
-                CreateEntry(userId, Now.UtcDateTime.AddHours(-1)));
+            var otherUserId = Guid.NewGuid();
+            var newest = CreateEntry(userId, Now.UtcDateTime, new DateOnly(2026, 11, 22));
+            var middle = CreateEntry(userId, Now.UtcDateTime.AddDays(-1), new DateOnly(2026, 11, 21));
+            var oldest = CreateEntry(userId, Now.UtcDateTime.AddDays(-2), new DateOnly(2026, 11, 20));
+            var otherUser = CreateEntry(otherUserId, Now.UtcDateTime, new DateOnly(2026, 11, 22));
+            var repository = new FakeDayEntryRepository(oldest, otherUser, newest, middle);
             var service = CreateService(repository);
 
-            var result = await service.HasUserPostedTodayAsync(userId);
+            var firstPage = await service.GetDayEntriesOfUserAsync(userId, limit: 2);
 
-            Assert.True(result);
+            Assert.Equal(new[] { newest, middle }, firstPage.Entries);
+            Assert.True(firstPage.HasMore);
+
+            var secondPage = await service.GetDayEntriesOfUserAsync(userId, middle.EntryDate, 2);
+
+            Assert.Equal(new[] { oldest }, secondPage.Entries);
+            Assert.False(secondPage.HasMore);
         }
 
         [Fact]
-        public async Task HasUserPostedTodayAsync_ReturnsFalse_WhenOnlyYesterdayHasEntry()
+        public async Task GetDayEntryOfUserByDateAsync_ReturnsOnlyOwnEntry()
         {
             var userId = Guid.NewGuid();
-            var repository = new FakeDayEntryRepository(
-                CreateEntry(userId, Now.UtcDateTime.AddDays(-1)));
+            var entryDate = new DateOnly(2026, 11, 22);
+            var entry = CreateEntry(userId, Now.UtcDateTime, entryDate);
+            var repository = new FakeDayEntryRepository(entry);
             var service = CreateService(repository);
 
-            var result = await service.HasUserPostedTodayAsync(userId);
-
-            Assert.False(result);
+            Assert.Same(entry, await service.GetDayEntryOfUserByDateAsync(userId, entryDate));
+            Assert.Null(await service.GetDayEntryOfUserByDateAsync(Guid.NewGuid(), entryDate));
         }
 
         [Fact]
@@ -122,6 +132,7 @@ namespace HowsYourDay.Server.Tests
             Assert.Single(repository.Entries);
             Assert.Single(analysisRepository.Analyses);
             Assert.Equal(entry.Id, analysisRepository.Analyses[0].DayEntryId);
+            Assert.Same(analysisRepository.Analyses[0], entry.Analysis);
         }
 
         [Fact]
@@ -187,6 +198,7 @@ namespace HowsYourDay.Server.Tests
             Assert.Equal(DayEntryAnalysis.NeutralLabel, analysis.Label);
             Assert.Equal("The entry reads as neutral overall.", analysis.Summary);
             Assert.Equal(0, analysis.SentimentScore);
+            Assert.Same(analysis, entry.Analysis);
         }
 
         private static DayEntry CreateEntry(
@@ -251,21 +263,16 @@ namespace HowsYourDay.Server.Tests
                     entry.UserId == userId && entry.EntryDate == entryDate));
         }
 
-        public Task<IEnumerable<DayEntry>> SearchAsync(
-            Guid? userId = null,
-            DateTime? fromUtc = null,
-            DateTime? toUtc = null)
+        public Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take)
         {
-            var query = Entries.AsEnumerable();
+            var page = Entries
+                .Where(entry => entry.UserId == userId)
+                .Where(entry => !before.HasValue || entry.EntryDate < before.Value)
+                .OrderByDescending(entry => entry.EntryDate)
+                .Take(take)
+                .ToList();
 
-            if (userId.HasValue)
-                query = query.Where(entry => entry.UserId == userId.Value);
-            if (fromUtc.HasValue)
-                query = query.Where(entry => entry.LoggedAtUtc >= fromUtc.Value);
-            if (toUtc.HasValue)
-                query = query.Where(entry => entry.LoggedAtUtc <= toUtc.Value);
-
-            return Task.FromResult(query.ToList().AsEnumerable());
+            return Task.FromResult<IReadOnlyList<DayEntry>>(page);
         }
 
         public Task InsertAsync(DayEntry day)

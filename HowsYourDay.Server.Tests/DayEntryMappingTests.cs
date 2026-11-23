@@ -26,6 +26,32 @@ namespace HowsYourDay.Server.Tests
             Assert.Equal(entry.LoggedAtUtc, dto.LoggedAtUtc);
             Assert.Equal(entry.Rating, dto.Rating);
             Assert.Equal(entry.Note, dto.Note);
+            Assert.Null(dto.Insight);
+        }
+
+        [Fact]
+        public void ToDto_MapsInsight()
+        {
+            var entry = new DayEntry
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                EntryDate = new DateOnly(2026, 11, 22),
+                LoggedAtUtc = new DateTime(2026, 11, 22, 8, 30, 0, DateTimeKind.Utc),
+                Rating = 7,
+                Note = "A good day",
+                Analysis = new DayEntryAnalysis
+                {
+                    Label = DayEntryAnalysis.PositiveLabel,
+                    Summary = "The entry reads as positive overall."
+                }
+            };
+
+            var dto = entry.ToDto();
+
+            Assert.NotNull(dto.Insight);
+            Assert.Equal(DayEntryAnalysis.PositiveLabel, dto.Insight.Label);
+            Assert.Equal("The entry reads as positive overall.", dto.Insight.Summary);
         }
 
         [Fact]
