@@ -1,0 +1,31 @@
+<fieldset class="weather-picker">
+    <legend>@Label</legend>
+    <div class="weather-options">
+        @foreach (var rating in Enumerable.Range(1, 10))
+        {
+            <label class="weather-option">
+                <input type="radio" name="@_groupName" value="@rating" checked="@(Value == rating)"
+                       aria-label="@($"{rating} out of 10, {WeatherNames[rating - 1]}")"
+                       @onchange="() => ValueChanged.InvokeAsync(rating)" />
+                <span class="weather-tile">
+                    <WeatherIcon Rating="rating" />
+                    <span>@rating</span>
+                </span>
+            </label>
+        }
+    </div>
+</fieldset>
+
+@code {
+    private static readonly string[] WeatherNames =
+    [
+        "Thunderstorm", "Heavy rain", "Rain", "Drizzle", "Overcast",
+        "Cloudy", "Partly cloudy", "Mostly sunny", "Sunshine", "Bright sunshine"
+    ];
+
+    private readonly string _groupName = $"weather-{Guid.NewGuid():N}";
+
+    [Parameter] public string Label { get; set; } = "What’s the weather like inside?";
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+}
