@@ -1,0 +1,77 @@
+@page "/days/{Date}"
+@attribute [Authorize(Policy = "Ui")]
+@inject AuthenticationStateProvider Authentication
+@inject IDayEntryService Entries
+@inject IUserTimeZoneService TimeZones
+@inject TimeProvider Clock
+@inject ILogger<DayDetail> Logger
+
+<PageTitle>Journal entry · HowsYourDay</PageTitle>
+<p><a href="/days">Back to Days</a></p>
+@if (_error)
+{
+    <h1>Journal entry</h1>
+    <p class="error" role="alert">The entry could not be loaded.</p>
+}
+else if (_entry is { } entry)
+{
+    <h1>@entry.EntryDate.ToString("dddd, MMMM d, yyyy")</h1>
+    <div class="today-grid">
+        <article class="journal-card">
+            <h2>Your entry</h2>
+            <p class="weather-rating">Your weather @entry.Rating/10</p>
+            <p class="note-text">@entry.Note</p>
+            @if (_isToday)
+            {
+                <a href="/">Edit today’s entry</a>
+            }
+        </article>
+        <InsightPanel Insight="entry.Insight" Title="Insight" EmptyText="An insight is unavailable for this entry." />
+    </div>
+}
+else if (_loaded)
+{
+    <h1>Entry not found</h1>
+}
+else
+{
+    <p role="status">Loading entry…</p>
+}
+
+@code {
+    [Parameter] public string? Date { get; set; }
+    [CascadingParameter] public HttpContext? RequestContext { get; set; }
+    private DayEntryDto? _entry;
+    private bool _isToday;
+    private bool _loaded;
+    private bool _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            if (DateOnly.TryParseExact(Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            {
+                var userId = (await Authentication.GetAuthenticationStateAsync()).User.GetUserId();
+                _entry = (await Entries.GetDayEntryOfUserByDateAsync(userId, date))?.ToDto();
+                if (_entry is not null)
+                {
+                    var zone = await TimeZones.GetTimeZoneAsync(userId);
+                    _isToday = date == TimeZoneHelper.GetLocalDate(Clock.GetUtcNow().UtcDateTime, zone);
+                }
+            }
+
+            if (_entry is null && RequestContext is not null && !RequestContext.Response.HasStarted)
+                RequestContext.Response.StatusCode = StatusCodes.Status404NotFound;
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not load a journal entry.");
+            _error = true;
+        }
+        finally
+        {
+            _loaded = true;
+        }
+    }
+}

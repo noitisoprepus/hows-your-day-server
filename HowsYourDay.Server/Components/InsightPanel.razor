@@ -1,0 +1,18 @@
+<section class="journal-card insight-panel">
+    <h2>@Title</h2>
+    @if (Insight is { } insight)
+    {
+        <p class="reading-label"><strong>How it read</strong> · @insight.Label</p>
+        <p>@insight.Summary</p>
+    }
+    else
+    {
+        <p>@EmptyText</p>
+    }
+</section>
+
+@code {
+    [Parameter] public DayEntryInsightDto? Insight { get; set; }
+    [Parameter] public string Title { get; set; } = "Today’s insight";
+    [Parameter] public string EmptyText { get; set; } = "Nothing to read yet.";
+}

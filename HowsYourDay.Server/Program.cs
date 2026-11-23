@@ -62,13 +62,15 @@ namespace HowsYourDay.Server
                         PermitLimit = 10,
                         Window = TimeSpan.FromMinutes(1)
                     }));
-                options.AddPolicy("JournalWrite", context => RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.GetUserId(),
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 12,
-                        Window = TimeSpan.FromMinutes(1)
-                    }));
+                options.AddPolicy("JournalWrite", context => HttpMethods.IsGet(context.Request.Method)
+                    ? RateLimitPartition.GetNoLimiter(Guid.Empty)
+                    : RateLimitPartition.GetFixedWindowLimiter(
+                        context.User.GetUserId(),
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 12,
+                            Window = TimeSpan.FromMinutes(1)
+                        }));
             });
 
             if (builder.Environment.IsDevelopment())

@@ -105,3 +105,57 @@ button:hover { background: #304466; }
 @media (max-width: 44rem) {
     .account-layout { grid-template-columns: 1fr; }
 }
+
+.journal-nav, .entry-heading, .month-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem 1.25rem;
+}
+.journal-nav a { text-decoration: none; }
+.journal-nav a:hover, .journal-nav a.active { text-decoration: underline; }
+.eyebrow, .entry-meta { color: var(--muted); }
+.today-grid { display: grid; grid-template-columns: 3fr 2fr; align-items: start; gap: 1rem; }
+.journal-card {
+    min-inline-size: 0;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border: 1px solid var(--line);
+    border-radius: .75rem;
+    background: #fffcf5;
+    overflow-wrap: anywhere;
+}
+.journal-card h2, .journal-card h3 { margin-top: 0; }
+.journal-form { display: grid; gap: .75rem; }
+.journal-form textarea, .journal-form select {
+    width: 100%;
+    padding: .7rem;
+    border: 1px solid var(--line);
+    border-radius: .55rem;
+    background: white;
+    font: inherit;
+    color: inherit;
+}
+.journal-form textarea { resize: vertical; }
+.journal-form > button { justify-self: start; }
+.note-text { white-space: pre-wrap; }
+.history-list { display: grid; gap: .75rem; margin-block: 1rem; }
+.entry-heading { justify-content: space-between; }
+.entry-heading h3, .month-navigation h2 { margin: 0; }
+.weather-rating, .reading-label {
+    width: fit-content;
+    padding: .2rem .65rem;
+    border-radius: .5rem;
+}
+.weather-rating { background: var(--amber); font-weight: 600; }
+.reading-label { background: #e7ebf2; }
+.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; }
+.week-day { display: grid; justify-items: center; gap: .4rem; }
+.week-weather svg { width: 1.75rem; }
+.settings-panel { max-width: 36rem; margin-bottom: 1rem; }
+button:disabled { opacity: .6; cursor: default; }
+
+@media (max-width: 44rem) {
+    .today-grid { grid-template-columns: 1fr; }
+    .site-header { flex-wrap: wrap; }
+    .journal-nav { order: 1; width: 100%; }
+}

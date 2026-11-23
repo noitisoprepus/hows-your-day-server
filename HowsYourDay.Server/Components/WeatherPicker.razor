@@ -4,7 +4,7 @@
         @foreach (var rating in Enumerable.Range(1, 10))
         {
             <label class="weather-option">
-                <input type="radio" name="@_groupName" value="@rating" checked="@(Value == rating)"
+                <input type="radio" name="@(Name ?? _groupName)" required="@Required" value="@rating" checked="@(Value == rating)"
                        aria-label="@($"{rating} out of 10, {WeatherNames[rating - 1]}")"
                        @onchange="() => ValueChanged.InvokeAsync(rating)" />
                 <span class="weather-tile">
@@ -26,6 +26,8 @@
     private readonly string _groupName = $"weather-{Guid.NewGuid():N}";
 
     [Parameter] public string Label { get; set; } = "What’s the weather like inside?";
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public bool Required { get; set; }
     [Parameter] public int? Value { get; set; }
     [Parameter] public EventCallback<int?> ValueChanged { get; set; }
 }

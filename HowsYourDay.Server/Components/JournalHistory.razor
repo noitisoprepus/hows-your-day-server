@@ -1,0 +1,168 @@
+@inject AuthenticationStateProvider Authentication
+@inject IServiceScopeFactory Scopes
+@inject TimeProvider Clock
+@inject ILogger<JournalHistory> Logger
+
+@if (_initialized && Insights)
+{
+    <section class="journal-card weekly">
+        <h2>This week</h2>
+        <div class="week-strip">
+            @foreach (var date in _week)
+            {
+                <div class="week-day">
+                    <span>@date.ToString("ddd")</span>
+                    @if (_ratings.TryGetValue(date, out var rating))
+                    {
+                        <span class="week-weather" role="img" aria-label="@($"Your weather {rating}/10")"><WeatherIcon Rating="rating" /></span>
+                    }
+                    else
+                    {
+                        <span aria-label="No entry">–</span>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+    <h2>History</h2>
+}
+else if (_initialized)
+{
+    <div class="month-navigation">
+        <button type="button" aria-label="Previous month" disabled="@(_busy || _month.Year == 1 && _month.Month == 1)" @onclick="() => ChangeMonthAsync(-1)">‹</button>
+        <h2 aria-live="polite">@_month.ToString("MMMM yyyy")</h2>
+        <button type="button" aria-label="Next month" disabled="@(_busy || _month >= _currentMonth)" @onclick="() => ChangeMonthAsync(1)">›</button>
+    </div>
+}
+
+@if (_error)
+{
+    <p class="error" role="alert">The journal could not be loaded.</p>
+    <button type="button" @onclick="LoadAsync" disabled="@_busy">Try again</button>
+}
+@if (_busy)
+{
+    <p role="status">Loading @(Insights ? "insights" : "days")…</p>
+}
+@if (_initialized && !_busy && !_error && _entries.Count == 0)
+{
+    <p>@(Insights ? "No insights yet." : "No entries for this month.")</p>
+}
+
+<div class="history-list">
+    @foreach (var entry in _entries)
+    {
+        <article class="journal-card" @key="entry.Id">
+            <div class="entry-heading">
+                <h3><a href="@DayUrl(entry.EntryDate)">@entry.EntryDate.ToString("dddd, MMMM d, yyyy")</a></h3>
+                @if (!Insights)
+                {
+                    <p class="weather-rating">Your weather @entry.Rating/10</p>
+                }
+            </div>
+            @if (!Insights)
+            {
+                <p class="entry-meta">@(entry.EntryDate == _today ? "Today · " : "")@TimeZoneInfo.ConvertTimeFromUtc(entry.LoggedAtUtc, _zone).ToString("t")</p>
+            }
+            @if (entry.Insight is { } insight)
+            {
+                <p class="reading-label"><strong>How it read</strong> · @insight.Label</p>
+                @if (Insights)
+                {
+                    <p>@insight.Summary</p>
+                    <p class="entry-meta">Based on your entry</p>
+                }
+            }
+            @if (!Insights)
+            {
+                <p class="note-text">@Excerpt(entry.Note)</p>
+            }
+            else
+            {
+                <a href="@DayUrl(entry.EntryDate)">View day</a>
+            }
+        </article>
+    }
+</div>
+
+@if (_hasMore && !_error)
+{
+    <button type="button" disabled="@_busy" @onclick="LoadAsync">@(Insights ? "Load earlier insights" : "Load earlier days")</button>
+}
+
+@code {
+    [Parameter] public bool Insights { get; set; }
+
+    private readonly List<DayEntryDto> _entries = [];
+    private Dictionary<DateOnly, int> _ratings = [];
+    private DateOnly[] _week = [];
+    private TimeZoneInfo _zone = TimeZoneInfo.Utc;
+    private DateOnly _today;
+    private DateOnly _currentMonth;
+    private DateOnly _month;
+    private bool _initialized;
+    private bool _busy;
+    private bool _error;
+    private bool _hasMore;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private Task ChangeMonthAsync(int offset)
+    {
+        _month = _month.AddMonths(offset);
+        _entries.Clear();
+        _hasMore = false;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        _error = false;
+        try
+        {
+            var userId = (await Authentication.GetAuthenticationStateAsync()).User.GetUserId();
+            await using var scope = Scopes.CreateAsyncScope();
+            var entries = scope.ServiceProvider.GetRequiredService<IDayEntryService>();
+            if (!_initialized)
+            {
+                var zones = scope.ServiceProvider.GetRequiredService<IUserTimeZoneService>();
+                _zone = await zones.GetTimeZoneAsync(userId);
+                _today = TimeZoneHelper.GetLocalDate(Clock.GetUtcNow().UtcDateTime, _zone);
+                _currentMonth = _month = new DateOnly(_today.Year, _today.Month, 1);
+
+                if (Insights)
+                {
+                    var monday = _today.AddDays(-((int)_today.DayOfWeek + 6) % 7);
+                    _week = Enumerable.Range(0, 7).Select(monday.AddDays).ToArray();
+                    var weekEntries = await entries.GetDayEntriesOfUserAsync(userId, monday.AddDays(7), 7, monday);
+                    _ratings = weekEntries.Entries.ToDictionary(day => day.EntryDate, day => day.Rating);
+                }
+                _initialized = true;
+            }
+
+            DateOnly? before = _entries.Count > 0 ? _entries[^1].EntryDate
+                : Insights ? null : _month.AddMonths(1);
+            var page = await entries.GetDayEntriesOfUserAsync(userId, before, 10,
+                from: Insights ? null : _month, analyzedOnly: Insights);
+            _entries.AddRange(page.Entries.Select(entry => entry.ToDto()));
+            _hasMore = page.HasMore;
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not load the journal history.");
+            _error = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string DayUrl(DateOnly date) => $"/days/{date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+    private static string Excerpt(string note) => note.Length <= 160 ? note : note[..160].TrimEnd() + "…";
+}

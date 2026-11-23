@@ -4,6 +4,12 @@
     <a class="wordmark" href="/">HowsYourDay</a>
     <AuthorizeView Policy="Ui">
         <Authorized>
+            <nav class="journal-nav" aria-label="Journal">
+                <NavLink href="/" Match="NavLinkMatch.All">Today</NavLink>
+                <NavLink href="/days">Days</NavLink>
+                <NavLink href="/insights">Insights</NavLink>
+                <NavLink href="/settings">Settings</NavLink>
+            </nav>
             <form method="post" action="/ui/account/logout" data-enhance-nav="false">
                 <AntiforgeryToken />
                 <button type="submit" class="text-button">Sign out</button>

@@ -1,0 +1,151 @@
+@page "/"
+@attribute [Authorize(Policy = "Ui")]
+@attribute [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("JournalWrite")]
+@inject AuthenticationStateProvider Authentication
+@inject IDayEntryService Entries
+@inject IUserTimeZoneService TimeZones
+@inject TimeProvider Clock
+@inject ILogger<Today> Logger
+
+<PageTitle>Today · HowsYourDay</PageTitle>
+@if (_today != default)
+{
+    <p class="eyebrow">@_today.ToString("dddd, MMMM d, yyyy")</p>
+}
+<h1>How’s your day?</h1>
+@if (_error is not null)
+{
+    <p class="error" role="alert">@_error</p>
+}
+@if (_ready && Draft is { } draft)
+{
+    @if (_saved)
+    {
+        <p role="status">Your entry was saved.</p>
+    }
+    <div class="today-grid">
+        <section class="journal-card">
+            <h2>@(_hasEntry ? "Edit your entry" : "Log an entry")</h2>
+            <form class="journal-form" method="post" @formname="today" @onsubmit="SaveAsync" data-journal-save>
+                <AntiforgeryToken />
+                <input type="hidden" name="Draft.Date" value="@_today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" />
+                <input type="hidden" name="Draft.IsUpdate" value="@(_hasEntry ? "true" : "false")" />
+                <WeatherPicker Name="Draft.Rating" Required="true" Value="draft.Rating" />
+                <label for="note">What’s on your mind?</label>
+                <textarea id="note" name="Draft.Note" rows="6" maxlength="@DayEntry.MaxNoteLength" required
+                          placeholder="A sentence is enough. What happened, or how did it feel?">@draft.Note</textarea>
+                <button type="submit">@(_hasEntry ? "Update today’s entry" : "Save today’s entry")</button>
+            </form>
+        </section>
+        <InsightPanel Insight="_entry?.Insight" EmptyText="@(_hasEntry ? "An insight is unavailable for this entry." : "Nothing to read yet. Save an entry to see how your day read.")" />
+    </div>
+}
+else if (_error is null)
+{
+    <p role="status">Loading today’s entry…</p>
+}
+else
+{
+    @if (Draft?.Note is { Length: > 0 } note)
+    {
+        <label for="unsaved-note">Your unsaved draft</label>
+        <textarea id="unsaved-note" rows="5" readonly>@note</textarea>
+    }
+    <a href="/">Try again</a>
+}
+
+@code {
+    [SupplyParameterFromForm(FormName = "today")]
+    private TodayDraft? Draft { get; set; }
+
+    private Guid _userId;
+    private DateOnly _today;
+    private DayEntryDto? _entry;
+    private bool _ready;
+    private bool _saved;
+    private string? _error;
+    private bool _hasEntry => _entry is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _userId = (await Authentication.GetAuthenticationStateAsync()).User.GetUserId();
+            var zone = await TimeZones.GetTimeZoneAsync(_userId);
+            _today = TimeZoneHelper.GetLocalDate(Clock.GetUtcNow().UtcDateTime, zone);
+            _entry = (await Entries.GetDayEntryOfUserByDateAsync(_userId, _today))?.ToDto();
+            Draft ??= new TodayDraft { Rating = _entry?.Rating, Note = _entry?.Note ?? "" };
+            _ready = true;
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not load the Today page.");
+            _error = "Today’s entry could not be loaded.";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!_ready || Draft is not { } draft)
+            return;
+
+        if (draft.Date != _today)
+        {
+            _error = "The date has changed. Review your draft before saving it for today.";
+            return;
+        }
+
+        var input = new CreateDayEntryDto { Rating = draft.Rating ?? 0, Note = draft.Note ?? "" };
+        var errors = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        if (!System.ComponentModel.DataAnnotations.Validator.TryValidateObject(input,
+                new System.ComponentModel.DataAnnotations.ValidationContext(input), errors, true))
+        {
+            _error = "Choose a weather rating and enter a note of up to 4,000 characters.";
+            return;
+        }
+
+        try
+        {
+            var entry = input.ToEntity();
+            if (draft.IsUpdate && _entry is { } existing)
+            {
+                entry.Id = existing.Id;
+                entry.EntryDate = _today;
+                await Entries.UpdateDayEntryOfUserAsync(_userId, entry);
+            }
+            else if (draft.IsUpdate)
+            {
+                _error = "The entry you were editing is no longer available. Review your draft before saving.";
+                return;
+            }
+            else
+            {
+                await Entries.InsertDayEntryOfUserAsync(_userId, entry, _today);
+            }
+            _entry = entry.ToDto();
+            _saved = true;
+        }
+        catch (HowsYourDay.Server.Exceptions.DayEntryAlreadyExistsException)
+        {
+            _error = "Today’s entry already exists. Review your draft before updating it.";
+            _entry = (await Entries.GetDayEntryOfUserByDateAsync(_userId, _today))?.ToDto();
+        }
+        catch (HowsYourDay.Server.Exceptions.DayEntryNotFoundException)
+        {
+            _error = "The entry or local date changed. Refresh Today before saving again.";
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not save a journal entry from Today.");
+            _error = "Your entry could not be saved. Your draft is still here.";
+        }
+    }
+
+    public sealed class TodayDraft
+    {
+        public DateOnly Date { get; set; }
+        public int? Rating { get; set; }
+        public string? Note { get; set; }
+        public bool IsUpdate { get; set; }
+    }
+}

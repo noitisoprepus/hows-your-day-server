@@ -1,0 +1,17 @@
+@page "/settings"
+@attribute [Authorize(Policy = "Ui")]
+
+<PageTitle>Settings · HowsYourDay</PageTitle>
+<h1>Settings</h1>
+<TimeZoneSettings @rendermode="InteractiveServer" />
+
+<section class="journal-card settings-panel">
+    <h2>Account</h2>
+    <div class="form-actions">
+        <form method="post" action="/ui/account/logout">
+            <AntiforgeryToken />
+            <button type="submit">Sign out</button>
+        </form>
+        <a href="/account/delete">Delete account</a>
+    </div>
+</section>

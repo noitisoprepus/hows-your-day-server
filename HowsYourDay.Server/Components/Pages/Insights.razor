@@ -1,0 +1,7 @@
+@page "/insights"
+@attribute [Authorize(Policy = "Ui")]
+
+<PageTitle>Insights · HowsYourDay</PageTitle>
+<h1>Insights</h1>
+<p>How each day read, based on what you wrote.</p>
+<JournalHistory Insights="true" @rendermode="InteractiveServer" />

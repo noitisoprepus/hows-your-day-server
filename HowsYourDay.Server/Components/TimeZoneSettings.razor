@@ -1,0 +1,134 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.JSInterop
+@inject AuthenticationStateProvider Authentication
+@inject IServiceScopeFactory Scopes
+@inject IJSRuntime JavaScript
+@inject ILogger<TimeZoneSettings> Logger
+
+<section class="journal-card settings-panel">
+    <h2>Timezone</h2>
+    @if (_error is not null)
+    {
+        <p class="error" role="alert">@_error</p>
+    }
+    @if (_loaded)
+    {
+        <p>Current timezone: @_effective</p>
+        <form class="journal-form" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+            <label for="timezone">Timezone</label>
+            <select id="timezone" @bind="_selected" disabled="@_busy">
+                @if (!ZoneIds.Contains(_selected))
+                {
+                    <option value="@_selected">@_selected</option>
+                }
+                @foreach (var zone in ZoneIds)
+                {
+                    <option value="@zone">@zone</option>
+                }
+            </select>
+            <div class="form-actions">
+                <button type="button" class="text-button" disabled="@_busy" @onclick="DetectAsync">Use browser timezone</button>
+                <button type="submit" disabled="@_busy">Save timezone</button>
+            </div>
+        </form>
+        @if (_saved)
+        {
+            <p role="status">Timezone saved.</p>
+        }
+    }
+    else if (_error is null)
+    {
+        <p role="status">Loading timezone…</p>
+    }
+</section>
+
+@code {
+    private static readonly string[] ZoneIds = TimeZoneInfo.GetSystemTimeZones()
+        .Select(zone => zone.Id).Order(StringComparer.Ordinal).ToArray();
+
+    private string _effective = "";
+    private string _selected = "";
+    private string? _error;
+    private bool _loaded;
+    private bool _busy;
+    private bool _saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var userId = (await Authentication.GetAuthenticationStateAsync()).User.GetUserId();
+            await using var scope = Scopes.CreateAsyncScope();
+            var zones = scope.ServiceProvider.GetRequiredService<IUserTimeZoneService>();
+            _effective = _selected = (await zones.GetTimeZoneAsync(userId)).Id;
+            _loaded = true;
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not load timezone settings.");
+            _error = "Your timezone could not be loaded.";
+        }
+    }
+
+    private async Task DetectAsync()
+    {
+        _saved = false;
+        _error = null;
+        try
+        {
+            await using var module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./timezone.js");
+            var id = await module.InvokeAsync<string?>("getBrowserTimeZone");
+            if (TimeZoneHelper.TryFind(id, out var zone) && zone.Id.Length <= 64)
+                _selected = zone.Id;
+            else
+                _error = "Your browser timezone isn’t available on this server. Choose one from the list.";
+        }
+        catch (JSException)
+        {
+            _error = "The browser timezone could not be detected.";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        _saved = false;
+        _error = null;
+        try
+        {
+            if (!TimeZoneHelper.TryFind(_selected, out var zone) || zone.Id.Length > 64)
+            {
+                _error = "Choose a supported timezone.";
+                return;
+            }
+
+            var userId = (await Authentication.GetAuthenticationStateAsync()).User.GetUserId();
+            await using var scope = Scopes.CreateAsyncScope();
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            var user = await users.FindByIdAsync(userId.ToString());
+            if (user is not null)
+            {
+                user.TimeZoneId = zone.Id;
+                if ((await users.UpdateAsync(user)).Succeeded)
+                {
+                    _effective = _selected = zone.Id;
+                    _saved = true;
+                    return;
+                }
+            }
+            _error = "Your timezone could not be saved. Try again.";
+        }
+        catch (Exception)
+        {
+            Logger.LogError("Could not save timezone settings.");
+            _error = "Your timezone could not be saved. Try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
