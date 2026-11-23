@@ -1,5 +1,7 @@
+using HowsYourDay.Server.DTOs.Authentication;
 using HowsYourDay.Server.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace HowsYourDay.Server.Controllers
 {
@@ -15,19 +17,11 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh()
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> Refresh([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RefreshTokenDto? request)
         {
-            if (HttpContext.Request.Cookies.TryGetValue("accessToken", out var accessToken))
-                return Ok();
-
-            if (!HttpContext.Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
-                return Unauthorized("No user logged in. Refresh token unavailable.");
-
-            var tokenResult = await _tokenService.RefreshToken(refreshToken);
-            
-            _tokenService.StoreTokensToCookie(tokenResult.AccessToken, tokenResult.RefreshToken, HttpContext);
-            
-            return Ok();
+            var tokens = await _tokenService.RefreshTokenAsync(request?.RefreshToken);
+            return tokens is null ? Unauthorized() : Ok(tokens);
         }
     }
 }

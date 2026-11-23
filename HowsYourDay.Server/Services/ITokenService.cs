@@ -4,9 +4,8 @@ namespace HowsYourDay.Server.Services
 {
     public interface ITokenService
     {
-        Task<TokenResult> CreateToken(AppUser user, bool populateExpiry);
-        Task<TokenResult> RefreshToken(string refreshToken);
-        void StoreTokensToCookie(string accessToken, string refreshToken, HttpContext context);
-        void ClearTokenCookie(HttpContext context);
+        Task<TokenResult> CreateTokenAsync(AppUser user);
+        Task<TokenResult?> RefreshTokenAsync(string? refreshToken);
+        Task RevokeAsync(Guid userId);
     }
 }

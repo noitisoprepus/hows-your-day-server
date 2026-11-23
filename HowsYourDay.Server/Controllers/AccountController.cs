@@ -12,11 +12,13 @@ namespace HowsYourDay.Server.Controllers
     {
         private readonly IAccountService _accountService;
         private readonly IDayEntryService _dayEntryService;
+        private readonly ITokenService _tokenService;
 
-        public AccountController(IAccountService accountService, IDayEntryService dayEntryService)
+        public AccountController(IAccountService accountService, IDayEntryService dayEntryService, ITokenService tokenService)
         {
             _accountService = accountService;
             _dayEntryService = dayEntryService;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -33,28 +35,23 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("login")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            
-            var result = await _accountService.LoginAsync(loginDto.UserName, loginDto.Password, HttpContext);
-
-            if (result.Succeeded)
-                return Ok();
-            else
-                return Unauthorized("Username or password not found");
+            var tokens = await _accountService.LoginApiAsync(loginDto.UserName, loginDto.Password);
+            return tokens is null ? Unauthorized("Invalid username or password.") : Ok(tokens);
         }
 
         [HttpPost("logout")]
-        [Authorize]
+        [Authorize(Policy = "Api")]
         public async Task<IActionResult> Logout()
         {
-            await _accountService.LogoutAsync(HttpContext);
-            return Ok("User logged out successfully");
+            await _tokenService.RevokeAsync(User.GetUserId());
+            return Ok();
         }
-        
+
         [HttpDelete("data")]
-        [Authorize]
+        [Authorize(Policy = "Api")]
         public async Task<IActionResult> Delete()
         {
             var userId = User.GetUserId();

@@ -7,7 +7,8 @@ namespace HowsYourDay.Server.Extensions
     {
         public static Guid GetUserId(this ClaimsPrincipal user)
         {
-            var idString = user.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            var idString = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
             return Guid.TryParse(idString, out var id)
                 ? id
                 : throw new InvalidOperationException("Invalid user ID format.");

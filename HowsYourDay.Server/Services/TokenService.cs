@@ -16,109 +16,89 @@ namespace HowsYourDay.Server.Services
         private readonly SymmetricSecurityKey _key;
         private readonly JwtOptions _jwtOptions;
         private readonly UserManager<AppUser> _userManager;
+        private readonly TimeProvider _timeProvider;
 
-        public TokenService(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions)
+        public TokenService(UserManager<AppUser> userManager, IOptions<JwtOptions> jwtOptions, TimeProvider timeProvider)
         {
             _jwtOptions = jwtOptions.Value;
             _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
             _userManager = userManager;
+            _timeProvider = timeProvider;
         }
 
-        // Access Token
-        public async Task<TokenResult> CreateToken(AppUser user, bool populateExpiry)
+        public async Task<TokenResult> CreateTokenAsync(AppUser user)
         {
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString())
-            };
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var tokens = CreateTokens(user.Id, now);
+            user.RefreshTokenHash = Hash(tokens.RefreshToken);
+            user.RefreshTokenExpiry = now.AddDays(7);
+            var result = await _userManager.UpdateAsync(user);
 
-            var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512Signature);
-            var tokenDescriptor = new SecurityTokenDescriptor
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Could not persist the refresh token.");
+
+            return tokens;
+        }
+
+        public async Task<TokenResult?> RefreshTokenAsync(string? refreshToken)
+        {
+            if (refreshToken is not { Length: 44 })
+                return null;
+
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var currentHash = Hash(refreshToken);
+            var validSession = _userManager.Users.Where(user =>
+                user.RefreshTokenHash == currentHash && user.RefreshTokenExpiry > now);
+            var userId = await validSession.Select(user => (Guid?)user.Id).SingleOrDefaultAsync();
+            if (userId is null)
+                return null;
+
+            var tokens = CreateTokens(userId.Value, now);
+            var nextHash = Hash(tokens.RefreshToken);
+            var nextExpiry = now.AddDays(7);
+            var concurrencyStamp = Guid.NewGuid().ToString();
+
+            // The old hash must still match when the update acquires the row lock.
+            var updated = await validSession.Where(user => user.Id == userId.Value)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(user => user.RefreshTokenHash, nextHash)
+                    .SetProperty(user => user.RefreshTokenExpiry, nextExpiry)
+                    .SetProperty(user => user.ConcurrencyStamp, concurrencyStamp));
+
+            return updated == 1 ? tokens : null;
+        }
+
+        public async Task RevokeAsync(Guid userId)
+        {
+            var concurrencyStamp = Guid.NewGuid().ToString();
+
+            await _userManager.Users.Where(user => user.Id == userId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(user => user.RefreshTokenHash, (string?)null)
+                    .SetProperty(user => user.RefreshTokenExpiry, DateTime.UnixEpoch)
+                    .SetProperty(user => user.ConcurrencyStamp, concurrencyStamp));
+        }
+
+        private TokenResult CreateTokens(Guid userId, DateTime now)
+        {
+            var descriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(5),
-                SigningCredentials = creds,
+                Subject = new ClaimsIdentity([new Claim(JwtRegisteredClaimNames.Sub, userId.ToString())]),
+                Expires = now.AddMinutes(5),
+                SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512),
                 Issuer = _jwtOptions.Issuer,
                 Audience = _jwtOptions.Audience
             };
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            
-            var refreshToken = GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
-            if (populateExpiry)
-                user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-            await _userManager.UpdateAsync(user);
-
-            var accessToken = tokenHandler.WriteToken(token);
-            
+            var handler = new JwtSecurityTokenHandler();
+            var accessToken = handler.WriteToken(handler.CreateToken(descriptor));
+            var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
             return new TokenResult(accessToken, refreshToken);
         }
 
-        public async Task<TokenResult> RefreshToken(string refreshToken)
+        private static string Hash(string token)
         {
-            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
-            if (user == null || user.RefreshTokenExpiry <= DateTime.UtcNow)
-                throw new Exception("Refresh token invalid. Please login again.");
-
-            return await CreateToken(user, true);
-        }
-
-        private string GenerateRefreshToken()
-        {
-            var randomNum = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNum);
-                return Convert.ToBase64String(randomNum);
-            }
-        }
-
-        public void StoreTokensToCookie(string accessToken, string refreshToken, HttpContext context)
-        {
-            context.Response.Cookies.Append("accessToken", accessToken,
-                new CookieOptions
-            {
-                Path = "/",
-                Domain = "localhost",
-                Expires = DateTime.UtcNow.AddMinutes(5),
-                HttpOnly = true,
-                IsEssential = true,
-                Secure =  true,
-                SameSite = SameSiteMode.None
-            });
-            
-            context.Response.Cookies.Append("refreshToken", refreshToken,
-                new CookieOptions
-            {
-                Expires = DateTime.UtcNow.AddDays(7),
-                HttpOnly = true,
-                IsEssential = true,
-                Secure =  true,
-                SameSite = SameSiteMode.None
-            });
-        }
-
-        public void ClearTokenCookie(HttpContext context)
-        {
-            context.Response.Cookies.Delete("accessToken",
-                new CookieOptions
-            {
-                HttpOnly = true,
-                IsEssential = true,
-                Secure =  true,
-                SameSite = SameSiteMode.None
-            });
-
-            context.Response.Cookies.Delete("refreshToken",
-                new CookieOptions
-            {
-                HttpOnly = true,
-                IsEssential = true,
-                Secure =  true,
-                SameSite = SameSiteMode.None
-            });
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
         }
     }
 }

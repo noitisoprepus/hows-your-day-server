@@ -9,7 +9,10 @@ namespace HowsYourDay.Server.Services
         private readonly SignInManager<AppUser> _signInManager;
         private readonly ITokenService _tokenService;
 
-        public AccountService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, ITokenService tokenService)
+        public AccountService(
+            UserManager<AppUser> userManager,
+            SignInManager<AppUser> signInManager,
+            ITokenService tokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -20,15 +23,10 @@ namespace HowsYourDay.Server.Services
         {
             return await _userManager.FindByIdAsync(userId.ToString());
         }
-        
+
         public async Task<IdentityResult> RegisterAsync(string username, string password)
         {
-            var user = new AppUser
-            {
-                // Only store username and no email for user anonymity
-                UserName = username
-            };
-
+            var user = new AppUser { UserName = username };
             var result = await _userManager.CreateAsync(user, password);
 
             if (result.Succeeded)
@@ -37,26 +35,24 @@ namespace HowsYourDay.Server.Services
             return result;
         }
 
-        public async Task<SignInResult> LoginAsync(string username, string password, HttpContext httpContext)
+        public async Task<TokenResult?> LoginApiAsync(string username, string password)
         {
             var user = await _userManager.FindByNameAsync(username);
-            if (user == null)
-                return SignInResult.Failed;
+            if (user is null)
+                return null;
 
-            var result = await _signInManager.PasswordSignInAsync(user, password, true, false);
-            if (result.Succeeded)
-            {
-                var tokenResult = await _tokenService.CreateToken(user, true);
-                _tokenService.StoreTokensToCookie(tokenResult.AccessToken, tokenResult.RefreshToken, httpContext);
-            }
-
-            return result;
+            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
+            return result.Succeeded ? await _tokenService.CreateTokenAsync(user) : null;
         }
 
-        public async Task LogoutAsync(HttpContext httpContext)
+        public Task<SignInResult> LoginUiAsync(string username, string password)
         {
-            await _signInManager.SignOutAsync();
-            _tokenService.ClearTokenCookie(httpContext);
+            return _signInManager.PasswordSignInAsync(username, password, isPersistent: true, lockoutOnFailure: false);
+        }
+
+        public Task LogoutUiAsync()
+        {
+            return _signInManager.SignOutAsync();
         }
 
         public async Task DeleteUserAsync(AppUser user)

@@ -8,7 +8,7 @@ namespace HowsYourDay.Server.Models
 
         public string? TimeZoneId { get; set; }
 
-        public string? RefreshToken { get; set; }
+        public string? RefreshTokenHash { get; set; }
         public DateTime RefreshTokenExpiry { get; set; }
     }
 }

@@ -10,7 +10,7 @@ namespace HowsYourDay.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Policy = "Api")]
     public class DayController : ControllerBase
     {
         private const int DefaultPageSize = 20;

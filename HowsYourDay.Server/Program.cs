@@ -68,7 +68,13 @@ namespace HowsYourDay.Server
                 });
             }
 
-            builder.Services.AddAuthorization();
+            builder.Services.AddAuthorizationBuilder()
+                .AddPolicy("Ui", policy => policy
+                    .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme)
+                    .RequireAuthenticatedUser())
+                .AddPolicy("Api", policy => policy
+                    .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser());
 
             builder.Services.AddOptions<JwtOptions>()
                 .Bind(jwtSection)
@@ -98,17 +104,15 @@ namespace HowsYourDay.Server
                 options.User.RequireUniqueEmail = false;
                 options.SignIn.RequireConfirmedEmail = false;
             }).AddEntityFrameworkStores<HowsYourDayAppDbContext>();
-            builder.Services.AddAuthentication(options =>
+            builder.Services.ConfigureApplicationCookie(options =>
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultForbidScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultSignOutScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
+                options.LoginPath = "/login";
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            });
+
+            builder.Services.AddAuthentication().AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -118,18 +122,8 @@ namespace HowsYourDay.Server
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
                     ValidateLifetime = true,
-                };
-
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        context.Request.Cookies.TryGetValue("accessToken", out var accessToken);
-                        if (!string.IsNullOrEmpty(accessToken))
-                            context.Token = accessToken;
-
-                        return Task.CompletedTask;
-                    }
+                    ClockSkew = TimeSpan.Zero,
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha512],
                 };
             });
 

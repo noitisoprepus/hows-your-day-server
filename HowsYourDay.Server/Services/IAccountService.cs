@@ -1,4 +1,3 @@
-using HowsYourDay.Server.DTOs.Authentication;
 using HowsYourDay.Server.Models;
 using Microsoft.AspNetCore.Identity;
 
@@ -8,8 +7,9 @@ namespace HowsYourDay.Server.Services
     {
         Task<AppUser?> GetUserAsync(Guid userId);
         Task<IdentityResult> RegisterAsync(string username, string password);
-        Task<SignInResult> LoginAsync(string username, string password, HttpContext httpContext);
-        Task LogoutAsync(HttpContext httpContext);
+        Task<TokenResult?> LoginApiAsync(string username, string password);
+        Task<SignInResult> LoginUiAsync(string username, string password);
+        Task LogoutUiAsync();
         Task DeleteUserAsync(AppUser user);
     }
 }
