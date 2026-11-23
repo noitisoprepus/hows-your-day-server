@@ -27,36 +27,17 @@ namespace HowsYourDay.Server.Services
             _timeProvider = timeProvider;
         }
 
-        public async Task<IEnumerable<DayEntry>> GetDayEntriesAsync(DateTime? fromUtc = null, DateTime? toUtc = null)
-        {
-            // Retrieve all days within the specified date range
-            var dayEntries = await _dayRepository.SearchAsync(null, fromUtc, toUtc);
-
-            return dayEntries;
-        }
-
-        public async Task<DayEntry?> GetDayEntryAsync(Guid dayEntryId)
-        {
-            var dayEntry = await _dayRepository.GetByIdAsync(dayEntryId);
-
-            return dayEntry;
-        }
-
-        public async Task<bool> HasUserPostedTodayAsync(Guid userId)
+        public async Task<(IReadOnlyList<DayEntry> Entries, bool HasMore)> GetDayEntriesOfUserAsync(
+            Guid userId,
+            DateOnly? before = null,
+            int limit = 20)
         {
             EnsureUserId(userId);
 
-            return await GetDayEntryOfUserTodayAsync(userId) is not null;
-        }
+            var entries = await _dayRepository.GetPageByUserAsync(userId, before, limit + 1);
+            var hasMore = entries.Count > limit;
 
-        public async Task<IEnumerable<DayEntry>> GetDayEntriesOfUserAsync(Guid userId, DateTime? fromUtc = null, DateTime? toUtc = null)
-        {
-            EnsureUserId(userId);
-
-            // Retrieve all days for a specific user within the specified date range
-            var dayEntries = await _dayRepository.SearchAsync(userId, fromUtc, toUtc);
-
-            return dayEntries;
+            return (entries.Take(limit).ToList(), hasMore);
         }
 
         public async Task<DayEntry?> GetDayEntryOfUserTodayAsync(Guid userId)
@@ -67,6 +48,13 @@ namespace HowsYourDay.Server.Services
             var today = TimeZoneHelper.GetLocalDate(GetUtcNow(), timeZone);
 
             return await _dayRepository.GetByUserAndDateAsync(userId, today);
+        }
+
+        public async Task<DayEntry?> GetDayEntryOfUserByDateAsync(Guid userId, DateOnly entryDate)
+        {
+            EnsureUserId(userId);
+
+            return await _dayRepository.GetByUserAndDateAsync(userId, entryDate);
         }
 
         public async Task InsertDayEntryOfUserAsync(Guid userId, DayEntry day)
@@ -95,6 +83,8 @@ namespace HowsYourDay.Server.Services
 
             var analysis = _nlpService.Analyze(day);
             await _dayEntryAnalysisRepository.InsertAsync(analysis);
+
+            day.Analysis = analysis;
         }
 
         public async Task UpdateDayEntryOfUserAsync(Guid userId, DayEntry entry)
@@ -128,11 +118,13 @@ namespace HowsYourDay.Server.Services
                 existingAnalysis.Entities = newAnalysis.Entities;
                 existingAnalysis.AnalyzedAtUtc = GetUtcNow();
                 await _dayEntryAnalysisRepository.UpdateAsync(existingAnalysis);
+                entry.Analysis = existingAnalysis;
             }
             else
             {
                 var newAnalysis = _nlpService.Analyze(entry);
                 await _dayEntryAnalysisRepository.InsertAsync(newAnalysis);
+                entry.Analysis = newAnalysis;
             }
         }
 

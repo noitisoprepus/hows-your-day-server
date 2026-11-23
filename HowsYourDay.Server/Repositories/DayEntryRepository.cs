@@ -22,15 +22,18 @@ namespace HowsYourDay.Server.Repositories
         public async Task<DayEntry?> GetByUserAndDateAsync(Guid userId, DateOnly entryDate)
         {
             return await _context.DayEntries
+                .Include(day => day.Analysis)
                 .FirstOrDefaultAsync(day => day.UserId == userId && day.EntryDate == entryDate);
         }
 
-        public async Task<IEnumerable<DayEntry>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null)
+        public async Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take)
         {
             return await _context.DayEntries
-                .Where(day => (!userId.HasValue || day.UserId == userId) &&
-                              (!fromUtc.HasValue || day.LoggedAtUtc >= fromUtc) &&
-                              (!toUtc.HasValue || day.LoggedAtUtc <= toUtc))
+                .Where(day => day.UserId == userId &&
+                              (!before.HasValue || day.EntryDate < before.Value))
+                .Include(day => day.Analysis)
+                .OrderByDescending(day => day.EntryDate)
+                .Take(take)
                 .ToListAsync();
         }
 
@@ -57,7 +60,10 @@ namespace HowsYourDay.Server.Repositories
 
         public async Task DeleteAllUserEntriesAsync(Guid userId)
         {
-            var userEntries = await SearchAsync(userId);
+            var userEntries = await _context.DayEntries
+                .Where(day => day.UserId == userId)
+                .ToListAsync();
+
             _context.DayEntries.RemoveRange(userEntries);
 
             await _context.SaveChangesAsync();

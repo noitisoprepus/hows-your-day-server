@@ -6,7 +6,7 @@ namespace HowsYourDay.Server.Repositories
     {
         Task<DayEntry?> GetByIdAsync(Guid id);
         Task<DayEntry?> GetByUserAndDateAsync(Guid userId, DateOnly entryDate);
-        Task<IEnumerable<DayEntry>> SearchAsync(Guid? userId = null, DateTime? fromUtc = null, DateTime? toUtc = null);
+        Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take);
         Task InsertAsync(DayEntry day);
         Task UpdateAsync(DayEntry day);
         Task DeleteAsync(DayEntry day);

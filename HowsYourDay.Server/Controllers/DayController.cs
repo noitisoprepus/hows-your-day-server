@@ -13,11 +13,53 @@ namespace HowsYourDay.Server.Controllers
     [Authorize]
     public class DayController : ControllerBase
     {
+        private const int DefaultPageSize = 20;
+        private const int MaxPageSize = 100;
+
         private readonly IDayEntryService _dayService;
 
         public DayController(IDayEntryService dayService)
         {
             _dayService = dayService;
+        }
+
+        [HttpGet("me/entries")]
+        public async Task<ActionResult<DayEntryPageDto>> GetEntries(
+            [FromQuery] DateOnly? before,
+            [FromQuery] int limit = DefaultPageSize)
+        {
+            if (limit is < 1 or > MaxPageSize)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid page size.",
+                    Detail = $"The 'limit' must be between 1 and {MaxPageSize}.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            var userId = User.GetUserId();
+
+            var (entries, hasMore) = await _dayService.GetDayEntriesOfUserAsync(userId, before, limit);
+
+            return Ok(new DayEntryPageDto
+            {
+                Entries = entries.Select(entry => entry.ToDto()).ToList(),
+                HasMore = hasMore
+            });
+        }
+
+        [HttpGet("me/entries/{date}")]
+        public async Task<ActionResult<DayEntryDto>> GetEntryByDate(DateOnly date)
+        {
+            var userId = User.GetUserId();
+
+            var result = await _dayService.GetDayEntryOfUserByDateAsync(userId, date);
+
+            if (result == null)
+                return NotFound();
+
+            return Ok(result.ToDto());
         }
 
         [HttpGet("me/entry/today")]
@@ -31,30 +73,6 @@ namespace HowsYourDay.Server.Controllers
                 return NotFound();
 
             return Ok(result.ToDto());
-        }
-
-        [HttpGet("me/entry")]
-        public async Task<ActionResult<IEnumerable<DayEntryDto>>> GetEntries([FromQuery] DateTime from, [FromQuery] DateTime to)
-        {
-            if (from > to)
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Invalid date range.",
-                    Detail = "The 'from' date must be earlier than the 'to' date.",
-                    Status = StatusCodes.Status400BadRequest
-                });
-            }
-
-            // Convert to UTC if not already
-            from = from.ToUniversalTime();
-            to = to.ToUniversalTime();
-
-            var userId = User.GetUserId();
-
-            var result = await _dayService.GetDayEntriesOfUserAsync(userId, from, to);
-
-            return Ok(result.Select(entry => entry.ToDto()));
         }
 
         [HttpPost("me/entry/today")]

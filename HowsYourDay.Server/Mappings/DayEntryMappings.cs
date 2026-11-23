@@ -13,7 +13,14 @@ public static class DayEntryMappings
             EntryDate = entry.EntryDate,
             LoggedAtUtc = entry.LoggedAtUtc,
             Rating = entry.Rating,
-            Note = entry.Note
+            Note = entry.Note,
+            Insight = entry.Analysis is null
+                ? null
+                : new DayEntryInsightDto
+                {
+                    Label = entry.Analysis.Label,
+                    Summary = entry.Analysis.Summary
+                }
         };
     }
 
