@@ -3,6 +3,7 @@ using HowsYourDay.Server.Extensions;
 using HowsYourDay.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HowsYourDay.Server.Controllers
 {
@@ -22,6 +23,7 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting("Auth")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -35,6 +37,7 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("Auth")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {

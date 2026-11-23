@@ -2,6 +2,7 @@ using HowsYourDay.Server.DTOs.Authentication;
 using HowsYourDay.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HowsYourDay.Server.Controllers
 {
@@ -17,6 +18,7 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("refresh")]
+        [EnableRateLimiting("Auth")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Refresh([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RefreshTokenDto? request)
         {

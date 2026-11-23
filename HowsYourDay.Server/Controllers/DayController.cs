@@ -5,6 +5,7 @@ using HowsYourDay.Server.Mappings;
 using HowsYourDay.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HowsYourDay.Server.Controllers
 {
@@ -76,6 +77,7 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPost("me/entry/today")]
+        [EnableRateLimiting("JournalWrite")]
         public async Task<ActionResult<DayEntryDto>> CreateEntryOfUserToday([FromBody] CreateDayEntryDto day)
         {
             var userId = User.GetUserId();
@@ -109,6 +111,7 @@ namespace HowsYourDay.Server.Controllers
         }
 
         [HttpPut("me/entry/today")]
+        [EnableRateLimiting("JournalWrite")]
         public async Task<ActionResult<DayEntryDto>> EditEntryOfUserToday([FromBody] CreateDayEntryDto day)
         {
             var userId = User.GetUserId();

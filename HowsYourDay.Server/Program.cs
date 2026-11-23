@@ -5,6 +5,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using HowsYourDay.Server.Extensions;
 using Npgsql;
 using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Models;
@@ -32,6 +35,8 @@ namespace HowsYourDay.Server
                 LogParameters = false
             };
 
+            builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 64 * 1024);
+
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
             var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
@@ -52,6 +57,25 @@ namespace HowsYourDay.Server
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });
+            });
+
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("Auth", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
+                options.AddPolicy("JournalWrite", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.GetUserId(),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 12,
+                        Window = TimeSpan.FromMinutes(1)
+                    }));
             });
 
             if (builder.Environment.IsDevelopment())
@@ -162,8 +186,10 @@ namespace HowsYourDay.Server
 
             app.UseHttpsRedirection();
 
+            app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseRateLimiter();
 
             app.MapControllers();
 
