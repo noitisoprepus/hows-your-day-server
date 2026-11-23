@@ -1,20 +1,20 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using System.Text;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
-using HowsYourDay.Server.Extensions;
-using Npgsql;
 using HowsYourDay.Server.Data;
+using HowsYourDay.Server.Extensions;
 using HowsYourDay.Server.Models;
 using HowsYourDay.Server.Options;
 using HowsYourDay.Server.Repositories;
 using HowsYourDay.Server.Services;
 using HowsYourDay.Server.Utilities;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Npgsql;
 
 namespace HowsYourDay.Server
 {
@@ -41,23 +41,13 @@ namespace HowsYourDay.Server
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
             var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
 
-            //// Add services to the container.
-
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
+
             builder.Services.AddProblemDetails();
             builder.Services.AddExceptionHandler<PrivacySafeExceptionHandler>();
-            
-            // CORS for web client
-            builder.Services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyHeader()
-                          .AllowAnyMethod();
-                });
-            });
+            builder.Services.AddHealthChecks()
+                .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"], timeout: TimeSpan.FromSeconds(3));
 
             builder.Services.AddRateLimiter(options =>
             {
@@ -136,6 +126,9 @@ namespace HowsYourDay.Server
                 // There will be no emails, only username
                 options.User.RequireUniqueEmail = false;
                 options.SignIn.RequireConfirmedEmail = false;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
             }).AddEntityFrameworkStores<HowsYourDayAppDbContext>();
             builder.Services.ConfigureApplicationCookie(options =>
             {
@@ -182,8 +175,6 @@ namespace HowsYourDay.Server
                 app.UseSwaggerUI();
             }
 
-            app.UseCors();
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
@@ -192,6 +183,12 @@ namespace HowsYourDay.Server
             app.UseRateLimiter();
 
             app.MapControllers();
+            app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false })
+                .AllowAnonymous();
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions
+            {
+                Predicate = check => check.Tags.Contains("ready")
+            }).AllowAnonymous();
 
             app.Run();
         }
