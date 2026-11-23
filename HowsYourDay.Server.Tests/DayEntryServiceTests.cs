@@ -116,8 +116,7 @@ namespace HowsYourDay.Server.Tests
         {
             var userId = Guid.NewGuid();
             var repository = new FakeDayEntryRepository();
-            var analysisRepository = new FakeDayEntryAnalysisRepository();
-            var service = CreateService(repository, analysisRepository);
+            var service = CreateService(repository);
             var entry = new DayEntry
             {
                 Rating = 5,
@@ -130,9 +129,8 @@ namespace HowsYourDay.Server.Tests
             Assert.Equal(DateOnly.FromDateTime(Now.UtcDateTime), entry.EntryDate);
             Assert.Equal(Now.UtcDateTime, entry.LoggedAtUtc);
             Assert.Single(repository.Entries);
-            Assert.Single(analysisRepository.Analyses);
-            Assert.Equal(entry.Id, analysisRepository.Analyses[0].DayEntryId);
-            Assert.Same(analysisRepository.Analyses[0], entry.Analysis);
+            Assert.NotNull(repository.Entries[0].Analysis);
+            Assert.Equal(entry.Id, repository.Entries[0].Analysis!.DayEntryId);
         }
 
         [Fact]
@@ -179,8 +177,7 @@ namespace HowsYourDay.Server.Tests
             var userId = Guid.NewGuid();
             var entry = CreateEntry(userId, Now.UtcDateTime.AddHours(-1));
             var repository = new FakeDayEntryRepository(entry);
-            var analysisRepository = new FakeDayEntryAnalysisRepository();
-            await analysisRepository.InsertAsync(new DayEntryAnalysis
+            entry.Analysis = new DayEntryAnalysis
             {
                 Id = Guid.NewGuid(),
                 DayEntryId = entry.Id,
@@ -188,17 +185,74 @@ namespace HowsYourDay.Server.Tests
                 Label = DayEntryAnalysis.PositiveLabel,
                 Summary = "Old summary.",
                 SentimentScore = 0.9
-            });
-            var service = CreateService(repository, analysisRepository);
+            };
+            var service = CreateService(repository);
 
             entry.Note = "An updated note";
             await service.UpdateDayEntryOfUserAsync(userId, entry);
 
-            var analysis = Assert.Single(analysisRepository.Analyses);
+            var analysis = Assert.IsType<DayEntryAnalysis>(entry.Analysis);
             Assert.Equal(DayEntryAnalysis.NeutralLabel, analysis.Label);
             Assert.Equal("The entry reads as neutral overall.", analysis.Summary);
             Assert.Equal(0, analysis.SentimentScore);
             Assert.Same(analysis, entry.Analysis);
+        }
+
+        [Fact]
+        public async Task InsertDayEntryOfUserAsync_RejectsDraftForPreviousLocalDate()
+        {
+            var userId = Guid.NewGuid();
+            var repository = new FakeDayEntryRepository();
+            var service = CreateService(repository);
+            var draft = new DayEntry { Rating = 6, Note = "A late draft" };
+
+            await Assert.ThrowsAsync<DayEntryNotFoundException>(() =>
+                service.InsertDayEntryOfUserAsync(userId, draft, new DateOnly(2026, 11, 21)));
+
+            Assert.Empty(repository.Entries);
+        }
+
+        [Fact]
+        public async Task GetDayEntriesOfUserAsync_AppliesBoundsAndInsightFilterBeforePaging()
+        {
+            var userId = Guid.NewGuid();
+            var before = new DateOnly(2026, 12, 1);
+            var from = new DateOnly(2026, 11, 1);
+            DayEntry Entry(DateOnly date, bool analyzed)
+            {
+                var entry = CreateEntry(userId, Now.UtcDateTime, date);
+                if (analyzed)
+                    entry.Analysis = new DayEntryAnalysis();
+                return entry;
+            }
+
+            var expected = Entry(from, true);
+            var repository = new FakeDayEntryRepository(
+                Entry(before, true), Entry(from.AddDays(1), false), expected, Entry(from.AddDays(-1), true));
+
+            var page = await CreateService(repository)
+                .GetDayEntriesOfUserAsync(userId, before, limit: 1, from: from, analyzedOnly: true);
+
+            Assert.Same(expected, Assert.Single(page.Entries));
+            Assert.False(page.HasMore);
+        }
+
+        [Fact]
+        public async Task InsertDayEntryOfUserAsync_DoesNotPersistEntryWhenAnalysisFails()
+        {
+            var repository = new FakeDayEntryRepository();
+            var service = new DayEntryService(repository, new FakeDayEntryAnalysisRepository(),
+                new FailingNlpService(), new FakeUserTimeZoneService(TimeZoneInfo.Utc), new FixedTimeProvider(Now));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.InsertDayEntryOfUserAsync(Guid.NewGuid(), new DayEntry { Rating = 6, Note = "A draft" }));
+
+            Assert.Empty(repository.Entries);
+        }
+
+        private sealed class FailingNlpService : INlpService
+        {
+            public DayEntryAnalysis Analyze(DayEntry entry) => throw new InvalidOperationException();
         }
 
         private static DayEntry CreateEntry(
@@ -263,11 +317,13 @@ namespace HowsYourDay.Server.Tests
                     entry.UserId == userId && entry.EntryDate == entryDate));
         }
 
-        public Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take)
+        public Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take, DateOnly? from = null, bool analyzedOnly = false)
         {
             var page = Entries
                 .Where(entry => entry.UserId == userId)
                 .Where(entry => !before.HasValue || entry.EntryDate < before.Value)
+                .Where(entry => !from.HasValue || entry.EntryDate >= from.Value)
+                .Where(entry => !analyzedOnly || entry.Analysis is not null)
                 .OrderByDescending(entry => entry.EntryDate)
                 .Take(take)
                 .ToList();

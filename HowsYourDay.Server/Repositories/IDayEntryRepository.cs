@@ -1,4 +1,4 @@
-﻿using HowsYourDay.Server.Models;
+using HowsYourDay.Server.Models;
 
 namespace HowsYourDay.Server.Repositories
 {
@@ -6,7 +6,7 @@ namespace HowsYourDay.Server.Repositories
     {
         Task<DayEntry?> GetByIdAsync(Guid id);
         Task<DayEntry?> GetByUserAndDateAsync(Guid userId, DateOnly entryDate);
-        Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take);
+        Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take, DateOnly? from = null, bool analyzedOnly = false);
         Task InsertAsync(DayEntry day);
         Task UpdateAsync(DayEntry day);
         Task DeleteAsync(DayEntry day);

@@ -1,6 +1,8 @@
-﻿using HowsYourDay.Server.Data;
+using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using HowsYourDay.Server.Exceptions;
+using Npgsql;
 
 namespace HowsYourDay.Server.Repositories
 {
@@ -16,6 +18,7 @@ namespace HowsYourDay.Server.Repositories
         public async Task<DayEntry?> GetByIdAsync(Guid id)
         {
             return await _context.DayEntries
+                .Include(day => day.Analysis)
                 .FirstOrDefaultAsync(day => day.Id == id);
         }
 
@@ -26,11 +29,14 @@ namespace HowsYourDay.Server.Repositories
                 .FirstOrDefaultAsync(day => day.UserId == userId && day.EntryDate == entryDate);
         }
 
-        public async Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take)
+        public async Task<IReadOnlyList<DayEntry>> GetPageByUserAsync(Guid userId, DateOnly? before, int take, DateOnly? from = null, bool analyzedOnly = false)
         {
             return await _context.DayEntries
                 .Where(day => day.UserId == userId &&
-                              (!before.HasValue || day.EntryDate < before.Value))
+                              (!before.HasValue || day.EntryDate < before.Value) &&
+                              (!from.HasValue || day.EntryDate >= from.Value) &&
+                              (!analyzedOnly || day.Analysis != null))
+                .AsNoTracking()
                 .Include(day => day.Analysis)
                 .OrderByDescending(day => day.EntryDate)
                 .Take(take)
@@ -41,7 +47,18 @@ namespace HowsYourDay.Server.Repositories
         {
             _context.DayEntries.Add(day);
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "IX_DayEntries_UserId_EntryDate"
+            })
+            {
+                throw new DayEntryAlreadyExistsException();
+            }
         }
 
         public async Task UpdateAsync(DayEntry day)

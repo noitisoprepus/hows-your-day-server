@@ -30,11 +30,13 @@ namespace HowsYourDay.Server.Services
         public async Task<(IReadOnlyList<DayEntry> Entries, bool HasMore)> GetDayEntriesOfUserAsync(
             Guid userId,
             DateOnly? before = null,
-            int limit = 20)
+            int limit = 20,
+            DateOnly? from = null,
+            bool analyzedOnly = false)
         {
             EnsureUserId(userId);
 
-            var entries = await _dayRepository.GetPageByUserAsync(userId, before, limit + 1);
+            var entries = await _dayRepository.GetPageByUserAsync(userId, before, limit + 1, from, analyzedOnly);
             var hasMore = entries.Count > limit;
 
             return (entries.Take(limit).ToList(), hasMore);
@@ -57,7 +59,7 @@ namespace HowsYourDay.Server.Services
             return await _dayRepository.GetByUserAndDateAsync(userId, entryDate);
         }
 
-        public async Task InsertDayEntryOfUserAsync(Guid userId, DayEntry day)
+        public async Task InsertDayEntryOfUserAsync(Guid userId, DayEntry day, DateOnly? expectedDate = null)
         {
             EnsureUserId(userId);
 
@@ -70,6 +72,9 @@ namespace HowsYourDay.Server.Services
             var now = GetUtcNow();
             var today = TimeZoneHelper.GetLocalDate(now, timeZone);
 
+            if (expectedDate.HasValue && expectedDate.Value != today)
+                throw new DayEntryNotFoundException();
+
             var existingEntry = await _dayRepository.GetByUserAndDateAsync(userId, today);
             if (existingEntry != null)
                 throw new DayEntryAlreadyExistsException();
@@ -79,12 +84,8 @@ namespace HowsYourDay.Server.Services
             day.EntryDate = today;
             day.LoggedAtUtc = now;
 
+            day.Analysis = _nlpService.Analyze(day);
             await _dayRepository.InsertAsync(day);
-
-            var analysis = _nlpService.Analyze(day);
-            await _dayEntryAnalysisRepository.InsertAsync(analysis);
-
-            day.Analysis = analysis;
         }
 
         public async Task UpdateDayEntryOfUserAsync(Guid userId, DayEntry entry)
@@ -100,32 +101,31 @@ namespace HowsYourDay.Server.Services
 
             var timeZone = await _userTimeZoneService.GetTimeZoneAsync(userId);
             var today = TimeZoneHelper.GetLocalDate(GetUtcNow(), timeZone);
-            if (entry.EntryDate != today)
+            if (existingEntry.EntryDate != today || entry.EntryDate != today)
                 throw new DayEntryNotFoundException();
 
             ValidateEntry(entry);
 
-            await _dayRepository.UpdateAsync(entry);
-
-            var existingAnalysis = await _dayEntryAnalysisRepository.GetByDayEntryIdAsync(entry.Id);
-            if (existingAnalysis != null)
+            var analysis = _nlpService.Analyze(entry);
+            if (existingEntry.Analysis is { } previous)
             {
-                var newAnalysis = _nlpService.Analyze(entry);
-                existingAnalysis.Label = newAnalysis.Label;
-                existingAnalysis.Summary = newAnalysis.Summary;
-                existingAnalysis.SentimentScore = newAnalysis.SentimentScore;
-                existingAnalysis.KeyPhrases = newAnalysis.KeyPhrases;
-                existingAnalysis.Entities = newAnalysis.Entities;
-                existingAnalysis.AnalyzedAtUtc = GetUtcNow();
-                await _dayEntryAnalysisRepository.UpdateAsync(existingAnalysis);
-                entry.Analysis = existingAnalysis;
+                previous.Label = analysis.Label;
+                previous.Summary = analysis.Summary;
+                previous.SentimentScore = analysis.SentimentScore;
+                previous.KeyPhrases = analysis.KeyPhrases;
+                previous.Entities = analysis.Entities;
+                previous.AnalyzedAtUtc = analysis.AnalyzedAtUtc;
             }
             else
             {
-                var newAnalysis = _nlpService.Analyze(entry);
-                await _dayEntryAnalysisRepository.InsertAsync(newAnalysis);
-                entry.Analysis = newAnalysis;
+                existingEntry.Analysis = analysis;
             }
+
+            existingEntry.Rating = entry.Rating;
+            existingEntry.Note = entry.Note;
+            await _dayRepository.UpdateAsync(existingEntry);
+            entry.LoggedAtUtc = existingEntry.LoggedAtUtc;
+            entry.Analysis = existingEntry.Analysis;
         }
 
         public async Task DeleteDayEntriesOfUserAsync(Guid userId)
