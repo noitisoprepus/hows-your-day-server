@@ -12,6 +12,17 @@ public class DayEntryAnalysisConfiguration : IEntityTypeConfiguration<DayEntryAn
 
         builder.HasKey(analysis => analysis.Id);
 
+        builder.Property(analysis => analysis.Label)
+            .IsRequired()
+            .HasMaxLength(DayEntryAnalysis.MaxLabelLength);
+
+        builder.Property(analysis => analysis.Summary)
+            .IsRequired()
+            .HasMaxLength(DayEntryAnalysis.MaxSummaryLength);
+
+        builder.Property(analysis => analysis.SentimentScore)
+            .IsRequired();
+
         builder.Property(analysis => analysis.KeyPhrases)
             .HasColumnType("text[]")
             .IsRequired();

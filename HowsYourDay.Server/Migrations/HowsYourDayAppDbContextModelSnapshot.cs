@@ -157,6 +157,19 @@ namespace HowsYourDay.Server.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<double>("SentimentScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(280)
+                        .HasColumnType("character varying(280)");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 

@@ -8,10 +8,12 @@ namespace HowsYourDay.Server.Services;
 
 public class NlpService : INlpService
 {
+    private readonly TimeProvider _timeProvider;
     private Pipeline? _nlp;
 
-    public NlpService()
+    public NlpService(TimeProvider timeProvider)
     {
+        _timeProvider = timeProvider;
         InitializeAsync().GetAwaiter().GetResult();
     }
     
@@ -35,14 +37,18 @@ public class NlpService : INlpService
 
         var entities = ExtractEntities(doc);
         var keyPhrases = ExtractKeyPhrases(doc);
+        var sentiment = SentimentAnalyzer.Analyze(entry.Note);
 
         var analysis = new DayEntryAnalysis
         {
             DayEntryId = entry.Id,
             UserId = entry.UserId,
+            Label = sentiment.Label,
+            Summary = SentimentAnalyzer.BuildSummary(sentiment.Label, keyPhrases),
+            SentimentScore = sentiment.Score,
             Entities = entities,
             KeyPhrases = keyPhrases,
-            AnalyzedAtUtc = DateTime.UtcNow
+            AnalyzedAtUtc = _timeProvider.GetUtcNow().UtcDateTime
         };
 
         return analysis;

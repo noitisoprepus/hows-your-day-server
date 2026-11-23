@@ -162,6 +162,33 @@ namespace HowsYourDay.Server.Tests
                 () => service.UpdateDayEntryOfUserAsync(userId, previousEntry));
         }
 
+        [Fact]
+        public async Task UpdateDayEntryOfUserAsync_RefreshesAnalysisInsight()
+        {
+            var userId = Guid.NewGuid();
+            var entry = CreateEntry(userId, Now.UtcDateTime.AddHours(-1));
+            var repository = new FakeDayEntryRepository(entry);
+            var analysisRepository = new FakeDayEntryAnalysisRepository();
+            await analysisRepository.InsertAsync(new DayEntryAnalysis
+            {
+                Id = Guid.NewGuid(),
+                DayEntryId = entry.Id,
+                UserId = userId,
+                Label = DayEntryAnalysis.PositiveLabel,
+                Summary = "Old summary.",
+                SentimentScore = 0.9
+            });
+            var service = CreateService(repository, analysisRepository);
+
+            entry.Note = "An updated note";
+            await service.UpdateDayEntryOfUserAsync(userId, entry);
+
+            var analysis = Assert.Single(analysisRepository.Analyses);
+            Assert.Equal(DayEntryAnalysis.NeutralLabel, analysis.Label);
+            Assert.Equal("The entry reads as neutral overall.", analysis.Summary);
+            Assert.Equal(0, analysis.SentimentScore);
+        }
+
         private static DayEntry CreateEntry(
             Guid userId,
             DateTime loggedAtUtc,
@@ -330,6 +357,9 @@ namespace HowsYourDay.Server.Tests
                 Id = Guid.NewGuid(),
                 DayEntryId = entry.Id,
                 UserId = entry.UserId,
+                Label = DayEntryAnalysis.NeutralLabel,
+                Summary = "The entry reads as neutral overall.",
+                SentimentScore = 0,
                 KeyPhrases = [],
                 Entities = [],
                 AnalyzedAtUtc = DateTime.UtcNow

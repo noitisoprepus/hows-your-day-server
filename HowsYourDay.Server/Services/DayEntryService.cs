@@ -121,6 +121,9 @@ namespace HowsYourDay.Server.Services
             if (existingAnalysis != null)
             {
                 var newAnalysis = _nlpService.Analyze(entry);
+                existingAnalysis.Label = newAnalysis.Label;
+                existingAnalysis.Summary = newAnalysis.Summary;
+                existingAnalysis.SentimentScore = newAnalysis.SentimentScore;
                 existingAnalysis.KeyPhrases = newAnalysis.KeyPhrases;
                 existingAnalysis.Entities = newAnalysis.Entities;
                 existingAnalysis.AnalyzedAtUtc = GetUtcNow();
