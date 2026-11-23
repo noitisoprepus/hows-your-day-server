@@ -10,6 +10,6 @@ namespace HowsYourDay.Server.Services
         Task<TokenResult?> LoginApiAsync(string username, string password);
         Task<SignInResult> LoginUiAsync(string username, string password);
         Task LogoutUiAsync();
-        Task DeleteUserAsync(AppUser user);
+        Task<IdentityResult> DeleteUserAsync(AppUser user);
     }
 }

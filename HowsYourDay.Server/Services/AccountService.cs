@@ -41,13 +41,13 @@ namespace HowsYourDay.Server.Services
             if (user is null)
                 return null;
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
+            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
             return result.Succeeded ? await _tokenService.CreateTokenAsync(user) : null;
         }
 
         public Task<SignInResult> LoginUiAsync(string username, string password)
         {
-            return _signInManager.PasswordSignInAsync(username, password, isPersistent: true, lockoutOnFailure: false);
+            return _signInManager.PasswordSignInAsync(username, password, isPersistent: true, lockoutOnFailure: true);
         }
 
         public Task LogoutUiAsync()
@@ -55,9 +55,9 @@ namespace HowsYourDay.Server.Services
             return _signInManager.SignOutAsync();
         }
 
-        public async Task DeleteUserAsync(AppUser user)
+        public Task<IdentityResult> DeleteUserAsync(AppUser user)
         {
-            await _userManager.DeleteAsync(user);
+            return _userManager.DeleteAsync(user);
         }
     }
 }
