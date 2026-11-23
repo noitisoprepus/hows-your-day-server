@@ -341,7 +341,7 @@ namespace HowsYourDay.Server.Migrations
             modelBuilder.Entity("HowsYourDay.Server.Models.DayEntryAnalysis", b =>
                 {
                     b.HasOne("HowsYourDay.Server.Models.DayEntry", null)
-                        .WithOne()
+                        .WithOne("Analysis")
                         .HasForeignKey("HowsYourDay.Server.Models.DayEntryAnalysis", "DayEntryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -396,6 +396,11 @@ namespace HowsYourDay.Server.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HowsYourDay.Server.Models.DayEntry", b =>
+                {
+                    b.Navigation("Analysis");
                 });
 #pragma warning restore 612, 618
         }

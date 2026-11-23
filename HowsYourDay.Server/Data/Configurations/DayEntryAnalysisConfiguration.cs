@@ -35,7 +35,7 @@ public class DayEntryAnalysisConfiguration : IEntityTypeConfiguration<DayEntryAn
             .IsRequired();
 
         builder.HasOne<DayEntry>()
-            .WithOne()
+            .WithOne(day => day.Analysis)
             .HasForeignKey<DayEntryAnalysis>(analysis => analysis.DayEntryId)
             .OnDelete(DeleteBehavior.Cascade);
 

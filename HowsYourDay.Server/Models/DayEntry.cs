@@ -46,5 +46,7 @@ namespace HowsYourDay.Server.Models
                 _note = trimmed;
             }
         }
+
+        public DayEntryAnalysis? Analysis { get; set; }
     }
 }

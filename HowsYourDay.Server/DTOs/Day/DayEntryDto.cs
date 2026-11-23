@@ -7,5 +7,6 @@ namespace HowsYourDay.Server.DTOs.Day
         public DateTime LoggedAtUtc { get; set; }
         public int Rating { get; set; }
         public string Note { get; set; } = string.Empty;
-    }   
+        public DayEntryInsightDto? Insight { get; set; }
+    }
 }
