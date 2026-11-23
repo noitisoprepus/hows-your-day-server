@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using Npgsql;
 using HowsYourDay.Server.Data;
 using HowsYourDay.Server.Models;
 using HowsYourDay.Server.Options;
@@ -25,6 +26,12 @@ namespace HowsYourDay.Server
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
+            var database = new NpgsqlConnectionStringBuilder(connectionString)
+            {
+                IncludeErrorDetail = false,
+                LogParameters = false
+            };
+
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
             var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
@@ -33,6 +40,8 @@ namespace HowsYourDay.Server
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddProblemDetails();
+            builder.Services.AddExceptionHandler<PrivacySafeExceptionHandler>();
             
             // CORS for web client
             builder.Services.AddCors(options =>
@@ -91,7 +100,7 @@ namespace HowsYourDay.Server
 
             // Set up database context
             builder.Services.AddDbContext<HowsYourDayAppDbContext>(options =>
-                options.UseNpgsql(connectionString));
+                options.UseNpgsql(database.ConnectionString));
 
             builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>(options =>
             {
@@ -139,6 +148,8 @@ namespace HowsYourDay.Server
             builder.Services.AddScoped<IDayEntryAnalysisRepository, DayEntryAnalysisRepository>();
 
             var app = builder.Build();
+
+            app.UseExceptionHandler();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
