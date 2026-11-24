@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
 using HowsYourDay.Server.Components;
@@ -9,7 +10,9 @@ using HowsYourDay.Server.Repositories;
 using HowsYourDay.Server.Services;
 using HowsYourDay.Server.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -21,9 +24,10 @@ namespace HowsYourDay.Server
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            var migrate = args.Contains("--migrate", StringComparer.Ordinal);
+            var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate").ToArray());
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -36,11 +40,38 @@ namespace HowsYourDay.Server
                 LogParameters = false
             };
 
+            if (migrate)
+                return await MigrateAsync(database.ConnectionString);
+
             builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 64 * 1024);
 
             var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
             var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
             var appSection = builder.Configuration.GetSection(AppOptions.SectionName);
+            var appOptions = appSection.Get<AppOptions>() ?? new AppOptions();
+            IPAddress? trustedProxy = null;
+            if (!string.IsNullOrWhiteSpace(appOptions.TrustedProxy) &&
+                !IPAddress.TryParse(appOptions.TrustedProxy, out trustedProxy))
+                throw new InvalidOperationException("App:TrustedProxy must be an IP address.");
+
+            if (trustedProxy is not null)
+            {
+                builder.Services.Configure<ForwardedHeadersOptions>(options =>
+                {
+                    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                    options.ForwardLimit = 1;
+                    options.KnownIPNetworks.Clear();
+                    options.KnownProxies.Clear();
+                    options.KnownProxies.Add(trustedProxy);
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(appOptions.DataProtectionKeyPath))
+            {
+                builder.Services.AddDataProtection()
+                    .SetApplicationName("HowsYourDay")
+                    .PersistKeysToFileSystem(new DirectoryInfo(appOptions.DataProtectionKeyPath));
+            }
 
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
             builder.Services.AddCascadingAuthenticationState();
@@ -173,6 +204,9 @@ namespace HowsYourDay.Server
 
             app.UseExceptionHandler();
 
+            if (trustedProxy is not null)
+                app.UseForwardedHeaders();
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
@@ -180,7 +214,8 @@ namespace HowsYourDay.Server
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            if (appOptions.HttpsRedirectionEnabled && trustedProxy is null)
+                app.UseHttpsRedirection();
 
             app.UseRouting();
             app.UseAuthentication();
@@ -199,7 +234,33 @@ namespace HowsYourDay.Server
                 Predicate = check => check.Tags.Contains("ready")
             }).AllowAnonymous();
 
-            app.Run();
+            await app.RunAsync();
+            return 0;
+        }
+
+        private static async Task<int> MigrateAsync(string connectionString)
+        {
+            var options = new DbContextOptionsBuilder<HowsYourDayAppDbContext>()
+                .UseNpgsql(connectionString)
+                .Options;
+            await using var context = new HowsYourDayAppDbContext(options);
+
+            try
+            {
+                await context.Database.MigrateAsync();
+                Console.WriteLine("Database migrations applied.");
+                return 0;
+            }
+            catch (PostgresException exception)
+            {
+                Console.Error.WriteLine($"Database migration failed (PostgreSQL SQLSTATE {exception.SqlState}).");
+                return 1;
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine($"Database migration failed ({exception.GetType().Name}).");
+                return 1;
+            }
         }
     }
 }
