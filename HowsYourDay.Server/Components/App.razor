@@ -1,3 +1,5 @@
+@inject NavigationManager Navigation
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,6 +12,9 @@
 </head>
 <body>
     <Routes />
+    <div id="blazor-error-ui" role="alert" data-nosnippet>
+        Something went wrong. <a href="@Navigation.Uri" class="reload" data-enhance-nav="false">Reload page</a>
+    </div>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script type="module" src="@Assets["journal-form.js"]"></script>
 </body>
