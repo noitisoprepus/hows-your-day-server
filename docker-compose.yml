@@ -1,34 +1,64 @@
+x-server-image: &server-image
+  image: ${DOCKER_REGISTRY-}howsyourdayserver
+  build:
+    context: .
+    dockerfile: HowsYourDay.Server/Dockerfile
+
 services:
   server:
-    image: ${DOCKER_REGISTRY-}howsyourdayserver
-    build:
-      context: .
-      dockerfile: HowsYourDay.Server/Dockerfile
+    <<: *server-image
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DefaultConnection: &connection-string "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      App__HttpsRedirectionEnabled: "false"
+      App__TrustedProxy: ${APP_TRUSTED_PROXY:-}
+      App__DataProtectionKeyPath: /var/lib/howsyourday/keys
       App__DefaultTimeZone: ${APP_DEFAULT_TIMEZONE:-UTC}
       Jwt__Issuer: ${JWT_ISSUER}
       Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__Key: ${JWT_KEY}
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
+    volumes:
+      - data_protection_keys:/var/lib/howsyourday/keys
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "--max-time", "5", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      timeout: 6s
+      retries: 5
+      start_period: 15s
+
+  migrate:
+    <<: *server-image
+    command: ["--migrate"]
+    restart: "no"
+    environment:
+      ConnectionStrings__DefaultConnection: *connection-string
     depends_on:
       db:
         condition: service_healthy
 
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
   postgres_data:
+  data_protection_keys:
