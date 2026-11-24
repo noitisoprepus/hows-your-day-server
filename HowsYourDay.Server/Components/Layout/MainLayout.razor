@@ -10,10 +10,13 @@
                 <NavLink href="/insights">Insights</NavLink>
                 <NavLink href="/settings">Settings</NavLink>
             </nav>
-            <form method="post" action="/ui/account/logout" data-enhance-nav="false">
-                <AntiforgeryToken />
-                <button type="submit" class="text-button">Sign out</button>
-            </form>
+            <div class="header-actions">
+                <ThemeToggle />
+                <form method="post" action="/ui/account/logout" data-enhance-nav="false">
+                    <AntiforgeryToken />
+                    <button type="submit" class="text-button">Sign out</button>
+                </form>
+            </div>
         </Authorized>
     </AuthorizeView>
 </header>
