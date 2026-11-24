@@ -76,7 +76,9 @@ button {
     font-weight: 600;
     cursor: pointer;
 }
-button:hover { background: #304466; }
+button { transition: background-color 160ms ease, transform 160ms ease; }
+button:enabled:hover { background: #304466; }
+button:enabled:active { transform: translateY(1px); }
 .text-button { padding-inline: .5rem; background: transparent; color: var(--navy); }
 .text-button:hover { background: #f1e8d7; }
 .danger { background: var(--error); }
@@ -99,6 +101,10 @@ button:hover { background: #304466; }
     background: #fffcf5;
 }
 .weather-tile svg { width: 1.75rem; height: 1.75rem; }
+.weather-tile { transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+@media (hover: hover) {
+    .weather-option:hover .weather-tile { border-color: var(--navy); }
+}
 .weather-option input:checked + .weather-tile { border-color: var(--navy); background: var(--amber); }
 .weather-option input:focus-visible + .weather-tile { outline: 3px solid #956000; outline-offset: 2px; }
 
@@ -112,7 +118,7 @@ button:hover { background: #304466; }
     align-items: center;
     gap: .75rem 1.25rem;
 }
-.journal-nav a { text-decoration: none; }
+.journal-nav a { text-decoration: none; transition: background-color 160ms ease, color 160ms ease; }
 .journal-nav a:hover, .journal-nav a.active { text-decoration: underline; }
 .eyebrow, .entry-meta { color: var(--muted); }
 .today-grid { display: grid; grid-template-columns: 3fr 2fr; align-items: start; gap: 1rem; }
@@ -150,6 +156,7 @@ button:hover { background: #304466; }
 .reading-label { background: #e7ebf2; }
 .week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; }
 .week-day { display: grid; justify-items: center; gap: .4rem; }
+.week-date { display: grid; justify-items: center; }
 .week-weather svg { width: 1.75rem; }
 .settings-panel { max-width: 36rem; margin-bottom: 1rem; }
 button:disabled { opacity: .6; cursor: default; }
@@ -158,4 +165,46 @@ button:disabled { opacity: .6; cursor: default; }
     .today-grid { grid-template-columns: 1fr; }
     .site-header { flex-wrap: wrap; }
     .journal-nav { order: 1; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button, .weather-tile, .journal-nav a { transition: none; }
+    button:enabled:active { transform: none; }
+}
+
+/* Journal layout */
+h1:focus-visible { outline: none; }
+h2, h3 { font-family: Georgia, serif; line-height: 1.2; }
+.site-header { padding-inline: max(1.5rem, calc((100% - 62rem) / 2)); }
+.journal-nav a { padding: .5rem .65rem; border-radius: .5rem; }
+.journal-nav a.active { background: #f1e5d2; text-decoration: none; }
+.page { padding-top: clamp(2rem, 4vw, 3.5rem); }
+.insight-panel { background: #fff1d5; border-color: #f0dfbd; }
+.brand-panel { position: relative; overflow: hidden; justify-content: flex-start; }
+.brand-panel .wordmark { font-size: 1.5rem; z-index: 1; }
+.brand-panel .brand-sun { position: absolute; width: clamp(12rem, 25vw, 24rem); right: -4rem; top: -4rem; opacity: .9; }
+.brand-panel .brand-headline { margin-top: auto; max-width: 12ch; font: 2.8rem/1.08 Georgia, serif; }
+.brand-panel p:last-child { margin-top: 1.5rem; }
+.weather-options { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.weather-option { color: #263958; }
+.weather-4, .weather-5, .weather-6 { color: #655a49; }
+.weather-7, .weather-8, .weather-9, .weather-10 { color: #835000; }
+.weather-option input:checked + .weather-tile { background: #f2c15d; color: #192840; box-shadow: inset 0 0 0 2px #192840; }
+.weather-1 input:checked + .weather-tile, .weather-2 input:checked + .weather-tile, .weather-3 input:checked + .weather-tile { background: #d9e2f0; }
+.weather-4 input:checked + .weather-tile, .weather-5 input:checked + .weather-tile, .weather-6 input:checked + .weather-tile { background: #e9e2d5; }
+.insights-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.day-entry { display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: 1rem; }
+.entry-date { display: grid; align-content: start; text-transform: uppercase; font-size: .75rem; color: var(--muted); }
+.entry-date strong { font: 2rem/1 Georgia, serif; color: var(--navy); }
+.entry-content { min-width: 0; }
+.entry-content p { margin-block: .5rem; }
+.week-empty { color: var(--muted); }
+@media (min-width: 80rem) { .weather-options { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+@media (max-width: 44rem) {
+    .brand-panel { min-height: 18rem; }
+    .brand-panel .brand-headline { font-size: 2rem; }
+    .insights-list { grid-template-columns: 1fr; }
+    .journal-nav { gap: .25rem; }
+    .journal-nav a { padding: .6rem .5rem; }
+    .week-day { font-size: .75rem; }
 }

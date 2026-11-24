@@ -11,14 +11,14 @@
             @foreach (var date in _week)
             {
                 <div class="week-day">
-                    <span>@date.ToString("ddd")</span>
+                    <span class="week-date"><span>@date.ToString("ddd")</span><span>@date.Day</span></span>
                     @if (_ratings.TryGetValue(date, out var rating))
                     {
                         <span class="week-weather" role="img" aria-label="@($"Your weather {rating}/10")"><WeatherIcon Rating="rating" /></span>
                     }
                     else
                     {
-                        <span aria-label="No entry">–</span>
+                        <span class="week-empty" aria-label="No entry">–</span>
                     }
                 </div>
             }
@@ -49,10 +49,15 @@ else if (_initialized)
     <p>@(Insights ? "No insights yet." : "No entries for this month.")</p>
 }
 
-<div class="history-list">
+<div class="history-list @(Insights ? "insights-list" : "days-list")">
     @foreach (var entry in _entries)
     {
-        <article class="journal-card" @key="entry.Id">
+        <article class="journal-card @(Insights ? "insight-entry" : "day-entry")" @key="entry.Id">
+            @if (!Insights)
+            {
+                <div class="entry-date"><span>@entry.EntryDate.ToString("ddd")</span><strong>@entry.EntryDate.ToString("dd")</strong></div>
+            }
+            <div class="entry-content">
             <div class="entry-heading">
                 <h3><a href="@DayUrl(entry.EntryDate)">@entry.EntryDate.ToString("dddd, MMMM d, yyyy")</a></h3>
                 @if (!Insights)
@@ -81,6 +86,7 @@ else if (_initialized)
             {
                 <a href="@DayUrl(entry.EntryDate)">View day</a>
             }
+            </div>
         </article>
     }
 </div>
