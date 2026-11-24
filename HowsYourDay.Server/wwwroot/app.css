@@ -100,7 +100,6 @@ button:enabled:active { transform: translateY(1px); }
     border-radius: .55rem;
     background: #fffcf5;
 }
-.weather-tile svg { width: 1.75rem; height: 1.75rem; }
 .weather-tile { transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
 @media (hover: hover) {
     .weather-option:hover .weather-tile { border-color: var(--navy); }
@@ -157,7 +156,6 @@ button:enabled:active { transform: translateY(1px); }
 .week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .3rem; }
 .week-day { display: grid; justify-items: center; gap: .4rem; }
 .week-date { display: grid; justify-items: center; }
-.week-weather svg { width: 1.75rem; }
 .settings-panel { max-width: 36rem; margin-bottom: 1rem; }
 button:disabled { opacity: .6; cursor: default; }
 
