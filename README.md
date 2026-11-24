@@ -30,6 +30,16 @@ For everyday startup, run `docker compose up -d`. Run `docker compose up --build
 
 Run `docker compose down` when you're done. Your entries will still be there the next time you start it.
 
+## Customize sentiment analysis
+
+Edit [SentimentLexicon.json](HowsYourDay.Server/Resources/SentimentLexicon.json) to add or remove positive words, negative words, or negators like `not` and `never`.
+
+The word lists are built into the app. After editing the file, rebuild the Docker image and restart the app.
+
+```sh
+docker compose up --build -d
+```
+
 ## Contributing
 
 Open an issue if you find a bug or have an idea. If you send a pull request, keep it focused and include a short note on what you changed and how you tested it.
