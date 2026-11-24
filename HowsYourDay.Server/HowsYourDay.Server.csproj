@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <Folder Include="DTOs\" />
+    <EmbeddedResource Include="Resources/SentimentLexicon.json" LogicalName="SentimentLexicon.json" />
   </ItemGroup>
 
 </Project>
