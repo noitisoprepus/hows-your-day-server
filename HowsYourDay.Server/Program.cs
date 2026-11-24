@@ -107,7 +107,6 @@ namespace HowsYourDay.Server
             if (builder.Environment.IsDevelopment())
             {
                 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-                builder.Services.AddSwaggerGen();
                 builder.Services.AddSwaggerGen(option =>
                 {
                     option.SwaggerDoc("v1", new OpenApiInfo { Title = "HowsYourDayAPI", Version = "v1" });
