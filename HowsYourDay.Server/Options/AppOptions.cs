@@ -8,4 +8,10 @@ public class AppOptions
 
     [Required]
     public string DefaultTimeZone { get; init; } = "UTC";
+
+    public bool HttpsRedirectionEnabled { get; init; } = true;
+
+    public string? TrustedProxy { get; init; }
+
+    public string? DataProtectionKeyPath { get; init; }
 }
