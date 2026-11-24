@@ -27,9 +27,20 @@ namespace HowsYourDay.Server
         public static async Task<int> Main(string[] args)
         {
             var migrate = args.Contains("--migrate", StringComparer.Ordinal);
-            var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate").ToArray());
+            var resetDemo = args.Contains("--reset-demo", StringComparer.Ordinal);
+            if (migrate && resetDemo)
+            {
+                Console.Error.WriteLine("Choose either --migrate or --reset-demo.");
+                return 1;
+            }
+
+            var builder = WebApplication.CreateBuilder(
+                args.Where(arg => arg is not ("--migrate" or "--reset-demo")).ToArray());
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            if (resetDemo)
+                return await DemoReset.RunAsync(connectionString);
 
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");

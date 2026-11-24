@@ -1,8 +1,14 @@
 @page "/register"
 @layout AccountLayout
+@inject IConfiguration Configuration
 
 <PageTitle>Create an account · HowsYourDay</PageTitle>
 <h1>Create an account</h1>
+@if (Configuration.GetValue<bool>("Demo:Enabled"))
+{
+    <p>The public demo clears accounts, journal entries, and insights every Monday at 00:00 UTC.
+        Please avoid entering personal or sensitive information. After the reset, create a new account to continue.</p>
+}
 @if (Error is "required" or "password" or "username")
 {
     <p class="error" role="alert">@(Error switch
