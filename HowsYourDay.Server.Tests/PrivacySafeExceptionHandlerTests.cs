@@ -36,6 +36,7 @@ public class PrivacySafeExceptionHandlerTests
         Assert.Equal(500, context.Response.StatusCode);
         Assert.StartsWith("text/html", context.Response.ContentType);
         Assert.Contains("Something went wrong", html);
+        Assert.Contains("""<link rel="icon" type="image/svg+xml" href="/favicon.svg">""", html);
         Assert.Contains("""<script src="/theme.js"></script>""", html);
         Assert.Contains("request-&lt;id&gt;", html);
         Assert.Contains("Back to Today", html);

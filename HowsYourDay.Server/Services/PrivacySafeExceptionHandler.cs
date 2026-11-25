@@ -49,6 +49,7 @@ public class PrivacySafeExceptionHandler(ILogger<PrivacySafeExceptionHandler> lo
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <meta name="color-scheme" content="light dark">
                 <title>Something went wrong · HowsYourDay</title>
+                <link rel="icon" type="image/svg+xml" href="{home}favicon.svg">
                 <script src="{home}theme.js"></script>
                 <link rel="stylesheet" href="{home}app.css">
             </head>
